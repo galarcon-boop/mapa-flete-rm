@@ -1,30 +1,188 @@
-<!-- VERSION TEST 999 -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>TEST NUEVO MAPA</title>
+<title>Flete por Comuna – RM</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body { margin:0; height:100%; }
-#map { height:100%; }
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+#container {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 260px;
+  background: #f7f7f7;
+  border-right: 1px solid #ccc;
+  padding: 10px;
+  overflow-y: auto;
+}
+
+#sidebar h2 {
+  margin-top: 0;
+  font-size: 18px;
+  text-align: center;
+}
+
+.comuna-item {
+  padding: 8px;
+  margin: 4px 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.comuna-item:hover {
+  background: #e6f0ff;
+}
+
+#map {
+  flex: 1;
+}
+
+.info {
+  position: absolute;
+  bottom: 20px;
+  left: 300px;
+  background: white;
+  padding: 10px 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  z-index: 1000;
+}
 </style>
 </head>
 
 <body>
 
-<div id="map"></div>
+<div id="container">
+  <div id="sidebar">
+    <h2>Comunas</h2>
+    <div id="listaComunas"></div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<div class="info" id="info">
+  Seleccione una comuna
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-const map = L.map('map').setView([-33.45, -70.66], 11);
+/* ===============================
+   CONFIGURACIÓN
+================================ */
+const FLETE_BASE = 7000;
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19
-}).addTo(map);
+const comunasDespacho = [
+  "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
+  "Huechuraba","Independencia","La Cisterna","La Florida","La Granja",
+  "La Pintana","La Reina","Lampa","Las Condes","Lo Barnechea","Lo Espejo",
+  "Lo Prado","Macul","Maipú","Ñuñoa","Pedro Aguirre Cerda","Peñalolén",
+  "Providencia","Pudahuel","Puente Alto","Quilicura","Quinta Normal",
+  "Recoleta","Renca","San Bernardo","San Joaquín","San Miguel",
+  "San Ramón","Santiago","Vitacura"
+];
+
+/* ===============================
+   MAPA
+================================ */
+const map = L.map('map', {
+  zoomControl: true
+}).setView([-33.45, -70.66], 10);
+
+/* ===============================
+   FUNCIONES
+================================ */
+function estilo() {
+  return {
+    fillColor: "#7db7ff",
+    weight: 1,
+    color: "#555",
+    fillOpacity: 0.8
+  };
+}
+
+function resaltar(e) {
+  const layer = e.target;
+  layer.setStyle({
+    weight: 3,
+    color: "#000",
+    fillOpacity: 1
+  });
+
+  const nombre = layer.feature.properties.NOM_COM;
+
+  document.getElementById("info").innerHTML =
+    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+}
+
+function resetear(e) {
+  geojson.resetStyle(e.target);
+}
+
+/* ===============================
+   CARGA COMUNAS
+================================ */
+let geojson;
+const capasPorComuna = {};
+
+fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
+  .then(r => r.json())
+  .then(data => {
+
+    const filtradas = {
+      type: "FeatureCollection",
+      features: data.features.filter(f =>
+        comunasDespacho.includes(f.properties.NOM_COM)
+      )
+    };
+
+    geojson = L.geoJSON(filtradas, {
+      style: estilo,
+      onEachFeature: function (feature, layer) {
+        const nombre = feature.properties.NOM_COM;
+        capasPorComuna[nombre] = layer;
+
+        layer.on({
+          mouseover: resaltar,
+          mouseout: resetear
+        });
+      }
+    }).addTo(map);
+
+    map.fitBounds(geojson.getBounds());
+
+    // Sidebar
+    const lista = document.getElementById("listaComunas");
+    comunasDespacho.forEach(nombre => {
+      const div = document.createElement("div");
+      div.className = "comuna-item";
+      div.innerText = nombre;
+      div.onclick = () => {
+        const layer = capasPorComuna[nombre];
+        map.fitBounds(layer.getBounds());
+        document.getElementById("info").innerHTML =
+          `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+      };
+      lista.appendChild(div);
+    });
+
+  })
+  .catch(err => {
+    document.getElementById("info").innerHTML = "Error cargando comunas";
+    console.error(err);
+  });
 </script>
 
 </body>
