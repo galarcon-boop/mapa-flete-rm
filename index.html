@@ -2,85 +2,91 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Flete por Comuna – RM</title>
+<title>Flete por Comuna – Región Metropolitana</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  font-family: Arial, sans-serif;
-}
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: white;
+    font-family: Arial, sans-serif;
+  }
 
-.container {
-  display: flex;
-  height: 100%;
-}
+  .container {
+    display: flex;
+    height: 100%;
+  }
 
-.sidebar {
-  width: 260px;
-  background: #f7f7f7;
-  border-right: 1px solid #ccc;
-  padding: 15px;
-  overflow-y: auto;
-}
+  .sidebar {
+    width: 260px;
+    background: #f7f7f7;
+    border-right: 1px solid #ccc;
+    padding: 15px;
+    overflow-y: auto;
+  }
 
-.sidebar h2 {
-  margin-top: 0;
-  font-size: 18px;
-}
+  .sidebar h2 {
+    margin-top: 0;
+    font-size: 18px;
+  }
 
-.comuna {
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-}
+  .comuna {
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
 
-.comuna:hover {
-  background: #eaeaea;
-}
+  .comuna:hover {
+    background: #eaeaea;
+  }
 
-#map {
-  flex: 1;
-}
+  #map {
+    flex: 1;
+  }
 
-.info {
-  position: absolute;
-  bottom: 20px;
-  left: 280px;
-  background: white;
-  padding: 12px 16px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  z-index: 999;
-}
+  .info {
+    position: absolute;
+    bottom: 20px;
+    left: 280px;
+    background: white;
+    padding: 12px 16px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    z-index: 1000;
+  }
 
-.legend {
-  position: absolute;
-  top: 20px;
-  left: 280px;
-  background: white;
-  padding: 10px 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  z-index: 999;
-}
-.legend-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.legend-color {
-  width: 30px;
-  height: 4px;
-  background: #c00000;
-}
+  .legend {
+    position: absolute;
+    top: 20px;
+    left: 280px;
+    background: white;
+    padding: 10px 14px;
+    font-size: 13px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    z-index: 1000;
+  }
+
+  .legend-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .line {
+    width: 30px;
+    height: 4px;
+    background: #d00000;
+  }
 </style>
 </head>
 
@@ -94,11 +100,13 @@ html, body {
   <div id="map"></div>
 </div>
 
-<div class="info" id="info">Seleccione una comuna</div>
+<div class="info" id="info">
+  Seleccione una comuna
+</div>
 
 <div class="legend">
   <div class="legend-line">
-    <div class="legend-color"></div>
+    <div class="line"></div>
     Autopista Américo Vespucio
   </div>
 </div>
@@ -106,95 +114,132 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+/* ===============================
+   CONFIGURACIÓN
+================================ */
 const FLETE_BASE = 7000;
 
 const COMUNAS_DESPACHO = [
-  "CERRILLOS","CERRO NAVIA","CONCHALI","EL BOSQUE","ESTACION CENTRAL",
-  "HUECHURABA","INDEPENDENCIA","LA CISTERNA","LA FLORIDA","LA GRANJA",
-  "LA PINTANA","LA REINA","LAMPA","LAS CONDES","LO BARNECHEA",
-  "LO ESPEJO","LO PRADO","MACUL","MAIPU","ÑUÑOA",
-  "PEDRO AGUIRRE CERDA","PEÑALOLEN","PROVIDENCIA","PUDAHUEL",
-  "PUENTE ALTO","QUILICURA","QUINTA NORMAL","RECOLETA","RENCA",
-  "SAN BERNARDO","SAN JOAQUIN","SAN MIGUEL","SAN RAMON",
-  "SANTIAGO","VITACURA"
+  "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
+  "Huechuraba","Independencia","La Cisterna","La Florida","La Granja",
+  "La Pintana","La Reina","Lampa","Las Condes","Lo Barnechea",
+  "Lo Espejo","Lo Prado","Macul","Maipú","Ñuñoa",
+  "Pedro Aguirre Cerda","Peñalolén","Providencia","Pudahuel",
+  "Puente Alto","Quilicura","Quinta Normal","Recoleta","Renca",
+  "San Bernardo","San Joaquín","San Miguel","San Ramón",
+  "Santiago","Vitacura"
 ];
 
-function normalizar(txt) {
-  return txt
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase()
-    .trim();
-}
-
-const map = L.map('map', { minZoom: 9, maxZoom: 12 })
-  .setView([-33.45, -70.66], 10);
+/* ===============================
+   MAPA
+================================ */
+const map = L.map('map', {
+  minZoom: 9,
+  maxZoom: 12
+}).setView([-33.45, -70.66], 10);
 
 map.setMaxBounds([
   [-34.3, -71.7],
   [-32.7, -69.8]
 ]);
 
+/* Pane superior para autopista */
+map.createPane("topPane");
+map.getPane("topPane").style.zIndex = 650;
+
 let geojson;
 
+/* ===============================
+   FUNCIONES
+================================ */
 function estilo(feature) {
+  const nombre = feature.properties.NOM_COM || "";
+  const despacha = COMUNAS_DESPACHO.includes(nombre);
+
   return {
-    fillColor: "#8dd3c7",
-    weight: 1,
-    color: "#444",
-    fillOpacity: 0.85
+    fillColor: despacha ? "#8dd3c7" : "#eeeeee",
+    weight: despacha ? 1 : 0.5,
+    color: "#555",
+    fillOpacity: despacha ? 0.85 : 0.2
   };
 }
 
-// === PANE AUTOPISTA ===
-map.createPane("vespucioPane");
-map.getPane("vespucioPane").style.zIndex = 650;
+function resaltar(e) {
+  const layer = e.target;
+  layer.setStyle({
+    weight: 3,
+    color: "#000"
+  });
 
-// === CARGA COMUNAS ===
+  const nombre = layer.feature.properties.NOM_COM || "Comuna";
+
+  if (COMUNAS_DESPACHO.includes(nombre)) {
+    document.getElementById("info").innerHTML =
+      `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+  } else {
+    document.getElementById("info").innerHTML =
+      `<strong>${nombre}</strong><br>No se despacha`;
+  }
+}
+
+function resetear(e) {
+  geojson.resetStyle(e.target);
+  document.getElementById("info").innerHTML =
+    "Seleccione una comuna";
+}
+
+/* ===============================
+   CARGA COMUNAS RM (ESTABLE)
+================================ */
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
   .then(data => {
 
     geojson = L.geoJSON(data, {
-      filter: f => COMUNAS_DESPACHO.includes(
-        normalizar(f.properties.NOM_COM)
-      ),
       style: estilo,
-      onEachFeature: (feature, layer) => {
+      onEachFeature: function (feature, layer) {
 
         const nombre = feature.properties.NOM_COM;
 
         layer.on({
-          mouseover: () => layer.setStyle({ weight: 3, color: "#000" }),
-          mouseout: () => geojson.resetStyle(layer)
+          mouseover: resaltar,
+          mouseout: resetear
         });
 
-        const div = document.createElement("div");
-        div.className = "comuna";
-        div.innerText = nombre;
+        if (COMUNAS_DESPACHO.includes(nombre)) {
+          const div = document.createElement("div");
+          div.className = "comuna";
+          div.innerText = nombre;
 
-        div.onclick = () => {
-          map.fitBounds(layer.getBounds());
-          document.getElementById("info").innerHTML =
-            `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
-        };
+          div.onclick = () => {
+            map.fitBounds(layer.getBounds());
+            resaltar({ target: layer });
+          };
 
-        document.getElementById("lista-comunas").appendChild(div);
+          document.getElementById("lista-comunas").appendChild(div);
+        }
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
 
-    // === AMÉRICO VESPUCIO (SIEMPRE ARRIBA) ===
+    /* === AUTOPISTA AMÉRICO VESPUCIO (ENCIMA) === */
     L.polyline([
       [-33.38,-70.74],[-33.34,-70.67],[-33.36,-70.58],
       [-33.43,-70.54],[-33.52,-70.55],[-33.60,-70.63],
       [-33.58,-70.72],[-33.48,-70.77],[-33.40,-70.76]
     ], {
-      pane: "vespucioPane",
-      color: "#c00000",
-      weight: 8,
+      pane: "topPane",
+      color: "#d00000",
+      weight: 7,
       opacity: 1
     }).addTo(map);
+
+  })
+  .catch(err => {
+    console.error(err);
+    document.getElementById("info").innerHTML =
+      "Error cargando comunas";
   });
 </script>
 
