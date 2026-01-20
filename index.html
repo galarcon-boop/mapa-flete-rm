@@ -4,10 +4,7 @@
 <meta charset="UTF-8">
 <title>Flete por Comuna – RM</title>
 
-<link
-  rel="stylesheet"
-  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
   html, body {
@@ -17,19 +14,16 @@
     font-family: Arial, sans-serif;
   }
 
-  /* Layout general */
   .container {
     display: flex;
     height: 100%;
   }
 
-  /* Barra lateral */
   .sidebar {
     width: 260px;
     background: #f7f7f7;
     border-right: 1px solid #ccc;
     padding: 15px;
-    box-sizing: border-box;
     overflow-y: auto;
   }
 
@@ -53,12 +47,10 @@
     background: #eaeaea;
   }
 
-  /* Mapa */
   #map {
     flex: 1;
   }
 
-  /* Info flotante */
   .info {
     position: absolute;
     bottom: 20px;
@@ -77,14 +69,11 @@
 <body>
 
 <div class="container">
-
   <div class="sidebar">
-    <h2>Comunas</h2>
+    <h2>Comunas (Zona A)</h2>
     <div id="lista-comunas"></div>
   </div>
-
   <div id="map"></div>
-
 </div>
 
 <div class="info" id="info">
@@ -96,29 +85,34 @@
 <script>
 const FLETE_BASE = 7000;
 
-const colores = [
-  "#8dd3c7","#ffffb3","#bebada","#fb8072",
-  "#80b1d3","#fdb462","#b3de69","#fccde5",
-  "#d9d9d9","#bc80bd","#ccebc5","#ffed6f"
+const ZONA_A = [
+  "Providencia","Santiago","Ñuñoa","La Reina","Macul","Peñalolén",
+  "La Florida","San Joaquín","San Miguel","Pedro Aguirre Cerda",
+  "La Cisterna","El Bosque","La Pintana","Puente Alto","San Bernardo",
+  "Lo Barnechea","Vitacura","Las Condes","Recoleta","Independencia",
+  "Quinta Normal","Estación Central","Cerrillos","Maipú","Pudahuel",
+  "Lo Prado","Cerro Navia","Renca","Conchalí","Huechuraba"
 ];
 
-// Crear mapa
+const colores = [
+  "#8dd3c7","#ffffb3","#bebada","#fb8072",
+  "#80b1d3","#fdb462","#b3de69","#fccde5"
+];
+
 const map = L.map('map', {
   minZoom: 9,
   maxZoom: 12
 }).setView([-33.45, -70.66], 10);
 
-// Limitar RM
 map.setMaxBounds([
   [-34.3, -71.7],
   [-32.7, -69.8]
 ]);
 
 let geojson;
-let capasPorComuna = {};
 
-function nombreComuna(props) {
-  return props.NOM_COM || props.COMUNA || props.NOMBRE || "Comuna";
+function nombreComuna(p) {
+  return p.NOM_COM || p.COMUNA || p.NOMBRE || "";
 }
 
 function estilo(feature) {
@@ -131,43 +125,41 @@ function estilo(feature) {
   };
 }
 
-function resaltar(layer) {
-  layer.setStyle({
-    weight: 3,
-    color: "#000",
-    fillOpacity: 1
-  });
-}
+// === AMÉRICO VESPUCIO (aproximado) ===
+L.polyline([
+  [-33.38,-70.74],[-33.34,-70.67],[-33.36,-70.58],
+  [-33.43,-70.54],[-33.52,-70.55],[-33.60,-70.63],
+  [-33.58,-70.72],[-33.48,-70.77],[-33.40,-70.76]
+], {
+  color: "#c00000",
+  weight: 6,
+  opacity: 0.9
+}).addTo(map);
 
-function resetear(layer) {
-  geojson.resetStyle(layer);
-}
-
-// Cargar comunas
+// === CARGA COMUNAS ===
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
   .then(data => {
 
     geojson = L.geoJSON(data, {
+      filter: feature => ZONA_A.includes(nombreComuna(feature.properties)),
       style: estilo,
-      onEachFeature: function (feature, layer) {
+      onEachFeature: (feature, layer) => {
 
         const nombre = nombreComuna(feature.properties);
-        capasPorComuna[nombre] = layer;
 
         layer.on({
-          mouseover: () => resaltar(layer),
-          mouseout: () => resetear(layer)
+          mouseover: () => layer.setStyle({ weight: 3, color: "#000" }),
+          mouseout: () => geojson.resetStyle(layer)
         });
 
-        // Crear item en la lista
         const div = document.createElement("div");
         div.className = "comuna";
         div.innerText = nombre;
 
         div.onclick = () => {
           map.fitBounds(layer.getBounds());
-          resaltar(layer);
+          layer.setStyle({ weight: 3, color: "#000" });
 
           document.getElementById("info").innerHTML =
             `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
@@ -178,11 +170,6 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
-  })
-  .catch(err => {
-    console.error(err);
-    document.getElementById("info").innerHTML =
-      "Error cargando comunas";
   });
 </script>
 
