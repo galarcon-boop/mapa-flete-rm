@@ -2,113 +2,40 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Flete por Comuna – RM</title>
+<title>Prueba Leaflet</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
 html, body {
   margin: 0;
-  padding: 0;
   height: 100%;
-  font-family: Arial, sans-serif;
-}
-
-#contenedor {
-  display: flex;
-  height: 100vh;
-}
-
-#sidebar {
-  width: 260px;
-  border-right: 1px solid #ddd;
-  padding: 10px;
-  overflow-y: auto;
 }
 
 #map {
-  flex: 1;
-}
-
-.info {
-  position: absolute;
-  bottom: 20px;
-  left: 280px;
-  background: white;
-  padding: 10px 14px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  z-index: 999;
+  width: 100vw;
+  height: 100vh;
 }
 </style>
 </head>
 
 <body>
 
-<div id="contenedor">
-  <div id="sidebar">
-    <h3>Comunas despachadas</h3>
-    <div id="listaComunas"></div>
-  </div>
-  <div id="map"></div>
-</div>
-
-<div class="info" id="info">Seleccione una comuna</div>
+<div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-const FLETE_BASE = 7000;
+const map = L.map('map').setView([-33.45, -70.66], 10);
 
-const COMUNAS_ACTIVAS = [
-  "Providencia","Ñuñoa","Santiago","Las Condes","Vitacura",
-  "La Reina","Maipú","Pudahuel","San Bernardo","Puente Alto",
-  "La Florida","La Pintana","Lo Barnechea"
-];
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '&copy; OpenStreetMap'
+}).addTo(map);
 
-const map = L.map('map', {
-  minZoom: 9,
-  maxZoom: 13
-}).setView([-33.45, -70.66], 10);
-
-const capas = {};
-
-fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
-  .then(r => r.json())
-  .then(data => {
-
-    const geo = L.geoJSON(data, {
-      filter: f => COMUNAS_ACTIVAS.includes(f.properties.NOM_COM),
-      style: { color: "#555", weight: 1, fillOpacity: 0.8 },
-      onEachFeature: (f, layer) => {
-        const n = f.properties.NOM_COM;
-        capas[n] = layer;
-
-        layer.bindTooltip(
-          `<strong>${n}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`,
-          { sticky: true }
-        );
-      }
-    }).addTo(map);
-
-    map.fitBounds(geo.getBounds());
-    crearLista();
-  });
-
-function crearLista() {
-  const c = document.getElementById("listaComunas");
-  COMUNAS_ACTIVAS.forEach(n => {
-    const d = document.createElement("div");
-    d.innerText = n;
-    d.style.cursor = "pointer";
-    d.onclick = () => {
-      map.fitBounds(capas[n].getBounds());
-      document.getElementById("info").innerHTML =
-        `<strong>${n}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
-    };
-    c.appendChild(d);
-  });
-}
+setTimeout(() => {
+  map.invalidateSize();
+}, 500);
 </script>
 
 </body>
