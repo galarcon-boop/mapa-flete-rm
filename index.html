@@ -2,205 +2,29 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Mapa Flete RM</title>
+<title>Test</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-html, body {
-  margin: 0;
-  height: 100%;
-  font-family: Arial, sans-serif;
-}
-
-.container {
-  display: flex;
-  height: 100%;
-}
-
-.sidebar {
-  width: 260px;
-  padding: 15px;
-  background: #f5f5f5;
-  border-right: 1px solid #ccc;
-  overflow-y: auto;
-}
-
-.sidebar h2 {
-  margin-top: 0;
-}
-
-.comuna {
-  padding: 8px;
-  margin-bottom: 6px;
-  background: white;
-  border: 1px solid #ccc;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-.comuna:hover {
-  background: #eaeaea;
-}
-
-#map {
-  flex: 1;
-}
-
-.info {
-  position: absolute;
-  bottom: 20px;
-  left: 300px;
-  background: white;
-  padding: 12px 16px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  z-index: 500;
-}
-
-.legend {
-  position: absolute;
-  top: 20px;
-  left: 300px;
-  background: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  z-index: 500;
-  font-size: 13px;
-}
-
-.line {
-  display: inline-block;
-  width: 30px;
-  height: 4px;
-  background: #c40000;
-  margin-right: 6px;
-}
+html, body { margin:0; height:100%; }
+#map { height:100%; }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-  <div class="sidebar">
-    <h2>Comunas</h2>
-    <div id="lista-comunas"></div>
-  </div>
-  <div id="map"></div>
-</div>
-
-<div class="legend">
-  <div><span class="line"></span>Autopista Américo Vespucio</div>
-</div>
-
-<div class="info" id="info">
-  Seleccione una comuna
-</div>
+<div id="map"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* =========================
-   CONFIG
-========================= */
-const FLETE = 7000;
+const map = L.map('map').setView([-33.45, -70.66], 11);
 
-const COMUNAS_DESPACHO_RAW = [
-"CERRILLOS","CERRO NAVIA","CONCHALÍ","EL BOSQUE","ESTACIÓN CENTRAL",
-"HUECHURABA","INDEPENDENCIA","LA CISTERNA","LA FLORIDA","LA GRANJA",
-"LA PINTANA","LA REINA","LAMPA","LAS CONDES","LO BARNECHEA",
-"LO ESPEJO","LO PRADO","MACUL","MAIPÚ","ÑUÑOA",
-"PEDRO AGUIRRE CERDA","PEÑALOLÉN","PROVIDENCIA","PUDAHUEL",
-"PUENTE ALTO","QUILICURA","QUINTA NORMAL","RECOLETA","RENCA",
-"SAN BERNARDO","SAN JOAQUÍN","SAN MIGUEL","SAN RAMÓN",
-"SANTIAGO","VITACURA"
-];
-
-const normalizar = txt =>
-  txt.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-
-const COMUNAS_DESPACHO = COMUNAS_DESPACHO_RAW.map(normalizar);
-
-/* =========================
-   MAPA
-========================= */
-const map = L.map("map", {
-  minZoom: 9,
-  maxZoom: 12
-}).setView([-33.45, -70.66], 10);
-
-map.createPane("vespucioPane");
-map.getPane("vespucioPane").style.zIndex = 350;
-
-/* =========================
-   ESTILO
-========================= */
-function estilo(feature) {
-  const nombre = normalizar(feature.properties.NOM_COM || "");
-  const activo = COMUNAS_DESPACHO.includes(nombre);
-
-  return {
-    fillColor: "#6fcf97",
-    color: "#555",
-    weight: activo ? 1 : 0,
-    fillOpacity: activo ? 0.85 : 0
-  };
-}
-
-/* =========================
-   COMUNAS
-========================= */
-fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
-.then(r => r.json())
-.then(data => {
-
-  const geo = L.geoJSON(data, {
-    style: estilo,
-    onEachFeature: (feature, layer) => {
-
-      const nombreOriginal = feature.properties.NOM_COM;
-      const nombre = normalizar(nombreOriginal);
-
-      if (!COMUNAS_DESPACHO.includes(nombre)) return;
-
-      layer.on("click", () => {
-        map.fitBounds(layer.getBounds());
-        document.getElementById("info").innerHTML =
-          `<strong>${nombreOriginal}</strong><br>Flete: $${FLETE.toLocaleString("es-CL")}`;
-      });
-
-      const item = document.createElement("div");
-      item.className = "comuna";
-      item.innerText = nombreOriginal;
-
-      item.onclick = () => {
-        map.fitBounds(layer.getBounds());
-        document.getElementById("info").innerHTML =
-          `<strong>${nombreOriginal}</strong><br>Flete: $${FLETE.toLocaleString("es-CL")}`;
-      };
-
-      document.getElementById("lista-comunas").appendChild(item);
-    }
-  }).addTo(map);
-
-  map.fitBounds(geo.getBounds());
-
-  /* =========================
-     AMÉRICO VESPUCIO
-  ========================= */
-  L.polyline([
-    [-33.38,-70.73],[-33.34,-70.67],[-33.36,-70.58],
-    [-33.44,-70.54],[-33.52,-70.55],[-33.60,-70.63],
-    [-33.58,-70.72],[-33.48,-70.77],[-33.40,-70.76],[-33.38,-70.73]
-  ], {
-    pane: "vespucioPane",
-    color: "#c40000",
-    weight: 6,
-    opacity: 1
-  }).addTo(map);
-
-});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19
+}).addTo(map);
 </script>
+
 </body>
 </html>
