@@ -2,91 +2,81 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Flete por Comuna – Región Metropolitana</title>
+<title>Mapa Flete RM</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-  html, body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    background: white;
-    font-family: Arial, sans-serif;
-  }
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
 
-  .container {
-    display: flex;
-    height: 100%;
-  }
+.container {
+  display: flex;
+  height: 100%;
+}
 
-  .sidebar {
-    width: 260px;
-    background: #f7f7f7;
-    border-right: 1px solid #ccc;
-    padding: 15px;
-    overflow-y: auto;
-  }
+.sidebar {
+  width: 260px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+}
 
-  .sidebar h2 {
-    margin-top: 0;
-    font-size: 18px;
-  }
+.sidebar h2 {
+  margin-top: 0;
+}
 
-  .comuna {
-    padding: 8px 10px;
-    margin-bottom: 6px;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-  }
+.comuna {
+  padding: 8px;
+  margin-bottom: 6px;
+  background: white;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  border-radius: 4px;
+}
 
-  .comuna:hover {
-    background: #eaeaea;
-  }
+.comuna:hover {
+  background: #eaeaea;
+}
 
-  #map {
-    flex: 1;
-  }
+#map {
+  flex: 1;
+}
 
-  .info {
-    position: absolute;
-    bottom: 20px;
-    left: 280px;
-    background: white;
-    padding: 12px 16px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    z-index: 1000;
-  }
+.info {
+  position: absolute;
+  bottom: 20px;
+  left: 300px;
+  background: white;
+  padding: 12px 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  z-index: 500;
+}
 
-  .legend {
-    position: absolute;
-    top: 20px;
-    left: 280px;
-    background: white;
-    padding: 10px 14px;
-    font-size: 13px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    z-index: 1000;
-  }
+.legend {
+  position: absolute;
+  top: 20px;
+  left: 300px;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  z-index: 500;
+  font-size: 13px;
+}
 
-  .legend-line {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .line {
-    width: 30px;
-    height: 4px;
-    background: #d00000;
-  }
+.line {
+  display: inline-block;
+  width: 30px;
+  height: 4px;
+  background: #c40000;
+  margin-right: 6px;
+}
 </style>
 </head>
 
@@ -100,148 +90,117 @@
   <div id="map"></div>
 </div>
 
-<div class="info" id="info">
-  Seleccione una comuna
+<div class="legend">
+  <div><span class="line"></span>Autopista Américo Vespucio</div>
 </div>
 
-<div class="legend">
-  <div class="legend-line">
-    <div class="line"></div>
-    Autopista Américo Vespucio
-  </div>
+<div class="info" id="info">
+  Seleccione una comuna
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* ===============================
-   CONFIGURACIÓN
-================================ */
-const FLETE_BASE = 7000;
+/* =========================
+   CONFIG
+========================= */
+const FLETE = 7000;
 
-const COMUNAS_DESPACHO = [
-  "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
-  "Huechuraba","Independencia","La Cisterna","La Florida","La Granja",
-  "La Pintana","La Reina","Lampa","Las Condes","Lo Barnechea",
-  "Lo Espejo","Lo Prado","Macul","Maipú","Ñuñoa",
-  "Pedro Aguirre Cerda","Peñalolén","Providencia","Pudahuel",
-  "Puente Alto","Quilicura","Quinta Normal","Recoleta","Renca",
-  "San Bernardo","San Joaquín","San Miguel","San Ramón",
-  "Santiago","Vitacura"
+const COMUNAS_DESPACHO_RAW = [
+"CERRILLOS","CERRO NAVIA","CONCHALÍ","EL BOSQUE","ESTACIÓN CENTRAL",
+"HUECHURABA","INDEPENDENCIA","LA CISTERNA","LA FLORIDA","LA GRANJA",
+"LA PINTANA","LA REINA","LAMPA","LAS CONDES","LO BARNECHEA",
+"LO ESPEJO","LO PRADO","MACUL","MAIPÚ","ÑUÑOA",
+"PEDRO AGUIRRE CERDA","PEÑALOLÉN","PROVIDENCIA","PUDAHUEL",
+"PUENTE ALTO","QUILICURA","QUINTA NORMAL","RECOLETA","RENCA",
+"SAN BERNARDO","SAN JOAQUÍN","SAN MIGUEL","SAN RAMÓN",
+"SANTIAGO","VITACURA"
 ];
 
-/* ===============================
+const normalizar = txt =>
+  txt.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+
+const COMUNAS_DESPACHO = COMUNAS_DESPACHO_RAW.map(normalizar);
+
+/* =========================
    MAPA
-================================ */
-const map = L.map('map', {
+========================= */
+const map = L.map("map", {
   minZoom: 9,
   maxZoom: 12
 }).setView([-33.45, -70.66], 10);
 
-map.setMaxBounds([
-  [-34.3, -71.7],
-  [-32.7, -69.8]
-]);
+map.createPane("vespucioPane");
+map.getPane("vespucioPane").style.zIndex = 350;
 
-/* Pane superior para autopista */
-map.createPane("topPane");
-map.getPane("topPane").style.zIndex = 650;
-
-let geojson;
-
-/* ===============================
-   FUNCIONES
-================================ */
+/* =========================
+   ESTILO
+========================= */
 function estilo(feature) {
-  const nombre = feature.properties.NOM_COM || "";
-  const despacha = COMUNAS_DESPACHO.includes(nombre);
+  const nombre = normalizar(feature.properties.NOM_COM || "");
+  const activo = COMUNAS_DESPACHO.includes(nombre);
 
   return {
-    fillColor: despacha ? "#8dd3c7" : "#eeeeee",
-    weight: despacha ? 1 : 0.5,
+    fillColor: "#6fcf97",
     color: "#555",
-    fillOpacity: despacha ? 0.85 : 0.2
+    weight: activo ? 1 : 0,
+    fillOpacity: activo ? 0.85 : 0
   };
 }
 
-function resaltar(e) {
-  const layer = e.target;
-  layer.setStyle({
-    weight: 3,
-    color: "#000"
-  });
-
-  const nombre = layer.feature.properties.NOM_COM || "Comuna";
-
-  if (COMUNAS_DESPACHO.includes(nombre)) {
-    document.getElementById("info").innerHTML =
-      `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
-  } else {
-    document.getElementById("info").innerHTML =
-      `<strong>${nombre}</strong><br>No se despacha`;
-  }
-}
-
-function resetear(e) {
-  geojson.resetStyle(e.target);
-  document.getElementById("info").innerHTML =
-    "Seleccione una comuna";
-}
-
-/* ===============================
-   CARGA COMUNAS RM (ESTABLE)
-================================ */
+/* =========================
+   COMUNAS
+========================= */
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
-  .then(r => r.json())
-  .then(data => {
+.then(r => r.json())
+.then(data => {
 
-    geojson = L.geoJSON(data, {
-      style: estilo,
-      onEachFeature: function (feature, layer) {
+  const geo = L.geoJSON(data, {
+    style: estilo,
+    onEachFeature: (feature, layer) => {
 
-        const nombre = feature.properties.NOM_COM;
+      const nombreOriginal = feature.properties.NOM_COM;
+      const nombre = normalizar(nombreOriginal);
 
-        layer.on({
-          mouseover: resaltar,
-          mouseout: resetear
-        });
+      if (!COMUNAS_DESPACHO.includes(nombre)) return;
 
-        if (COMUNAS_DESPACHO.includes(nombre)) {
-          const div = document.createElement("div");
-          div.className = "comuna";
-          div.innerText = nombre;
+      layer.on("click", () => {
+        map.fitBounds(layer.getBounds());
+        document.getElementById("info").innerHTML =
+          `<strong>${nombreOriginal}</strong><br>Flete: $${FLETE.toLocaleString("es-CL")}`;
+      });
 
-          div.onclick = () => {
-            map.fitBounds(layer.getBounds());
-            resaltar({ target: layer });
-          };
+      const item = document.createElement("div");
+      item.className = "comuna";
+      item.innerText = nombreOriginal;
 
-          document.getElementById("lista-comunas").appendChild(div);
-        }
-      }
-    }).addTo(map);
+      item.onclick = () => {
+        map.fitBounds(layer.getBounds());
+        document.getElementById("info").innerHTML =
+          `<strong>${nombreOriginal}</strong><br>Flete: $${FLETE.toLocaleString("es-CL")}`;
+      };
 
-    map.fitBounds(geojson.getBounds());
+      document.getElementById("lista-comunas").appendChild(item);
+    }
+  }).addTo(map);
 
-    /* === AUTOPISTA AMÉRICO VESPUCIO (ENCIMA) === */
-    L.polyline([
-      [-33.38,-70.74],[-33.34,-70.67],[-33.36,-70.58],
-      [-33.43,-70.54],[-33.52,-70.55],[-33.60,-70.63],
-      [-33.58,-70.72],[-33.48,-70.77],[-33.40,-70.76]
-    ], {
-      pane: "topPane",
-      color: "#d00000",
-      weight: 7,
-      opacity: 1
-    }).addTo(map);
+  map.fitBounds(geo.getBounds());
 
-  })
-  .catch(err => {
-    console.error(err);
-    document.getElementById("info").innerHTML =
-      "Error cargando comunas";
-  });
+  /* =========================
+     AMÉRICO VESPUCIO
+  ========================= */
+  L.polyline([
+    [-33.38,-70.73],[-33.34,-70.67],[-33.36,-70.58],
+    [-33.44,-70.54],[-33.52,-70.55],[-33.60,-70.63],
+    [-33.58,-70.72],[-33.48,-70.77],[-33.40,-70.76],[-33.38,-70.73]
+  ], {
+    pane: "vespucioPane",
+    color: "#c40000",
+    weight: 6,
+    opacity: 1
+  }).addTo(map);
+
+});
 </script>
-
 </body>
 </html>
