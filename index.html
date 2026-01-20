@@ -14,19 +14,55 @@
     margin: 0;
     padding: 0;
     height: 100%;
-    background: white;
     font-family: Arial, sans-serif;
   }
 
-  #map {
-    width: 100%;
+  /* Layout general */
+  .container {
+    display: flex;
     height: 100%;
   }
 
+  /* Barra lateral */
+  .sidebar {
+    width: 260px;
+    background: #f7f7f7;
+    border-right: 1px solid #ccc;
+    padding: 15px;
+    box-sizing: border-box;
+    overflow-y: auto;
+  }
+
+  .sidebar h2 {
+    margin-top: 0;
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .comuna {
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+
+  .comuna:hover {
+    background: #eaeaea;
+  }
+
+  /* Mapa */
+  #map {
+    flex: 1;
+  }
+
+  /* Info flotante */
   .info {
     position: absolute;
     bottom: 20px;
-    left: 20px;
+    left: 280px;
     background: white;
     padding: 12px 16px;
     font-size: 14px;
@@ -40,9 +76,19 @@
 
 <body>
 
-<div id="map"></div>
+<div class="container">
+
+  <div class="sidebar">
+    <h2>Comunas</h2>
+    <div id="lista-comunas"></div>
+  </div>
+
+  <div id="map"></div>
+
+</div>
+
 <div class="info" id="info">
-  Pase el mouse sobre una comuna
+  Seleccione una comuna
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -56,20 +102,24 @@ const colores = [
   "#d9d9d9","#bc80bd","#ccebc5","#ffed6f"
 ];
 
-// Crear mapa SIN mapa base (solo comunas)
+// Crear mapa
 const map = L.map('map', {
-  zoomControl: true,
   minZoom: 9,
   maxZoom: 12
 }).setView([-33.45, -70.66], 10);
 
-// Limitar área RM
+// Limitar RM
 map.setMaxBounds([
   [-34.3, -71.7],
   [-32.7, -69.8]
 ]);
 
 let geojson;
+let capasPorComuna = {};
+
+function nombreComuna(props) {
+  return props.NOM_COM || props.COMUNA || props.NOMBRE || "Comuna";
+}
 
 function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
@@ -81,37 +131,19 @@ function estilo(feature) {
   };
 }
 
-function resaltar(e) {
-  const layer = e.target;
+function resaltar(layer) {
   layer.setStyle({
     weight: 3,
     color: "#000",
     fillOpacity: 1
   });
-
-  const nombre =
-    featureName(layer.feature.properties);
-
-  document.getElementById("info").innerHTML =
-    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 }
 
-function resetear(e) {
-  geojson.resetStyle(e.target);
-  document.getElementById("info").innerHTML =
-    "Pase el mouse sobre una comuna";
+function resetear(layer) {
+  geojson.resetStyle(layer);
 }
 
-function featureName(props) {
-  return (
-    props.NOM_COM ||
-    props.COMUNA ||
-    props.NOMBRE ||
-    "Comuna"
-  );
-}
-
-// Cargar comunas RM
+// Cargar comunas
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
   .then(data => {
@@ -119,10 +151,29 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     geojson = L.geoJSON(data, {
       style: estilo,
       onEachFeature: function (feature, layer) {
+
+        const nombre = nombreComuna(feature.properties);
+        capasPorComuna[nombre] = layer;
+
         layer.on({
-          mouseover: resaltar,
-          mouseout: resetear
+          mouseover: () => resaltar(layer),
+          mouseout: () => resetear(layer)
         });
+
+        // Crear item en la lista
+        const div = document.createElement("div");
+        div.className = "comuna";
+        div.innerText = nombre;
+
+        div.onclick = () => {
+          map.fitBounds(layer.getBounds());
+          resaltar(layer);
+
+          document.getElementById("info").innerHTML =
+            `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+        };
+
+        document.getElementById("lista-comunas").appendChild(div);
       }
     }).addTo(map);
 
