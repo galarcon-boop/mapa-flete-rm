@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<title>Mapa Flete RM</title>
+<meta charset="UTF-8">
+<title>Flete por Comuna – RM</title>
 
 <link
   rel="stylesheet"
@@ -14,11 +14,26 @@
     margin: 0;
     padding: 0;
     height: 100%;
+    background: white;
+    font-family: Arial, sans-serif;
   }
 
   #map {
     width: 100%;
     height: 100%;
+  }
+
+  .info {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    background: white;
+    padding: 12px 16px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    z-index: 999;
   }
 </style>
 </head>
@@ -26,50 +41,98 @@
 <body>
 
 <div id="map"></div>
+<div class="info" id="info">
+  Pase el mouse sobre una comuna
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* =========================
-   MAPA BASE
-========================= */
+const FLETE_BASE = 7000;
 
-const map = L.map("map").setView([-33.45, -70.66], 10);
+const colores = [
+  "#8dd3c7","#ffffb3","#bebada","#fb8072",
+  "#80b1d3","#fdb462","#b3de69","#fccde5",
+  "#d9d9d9","#bc80bd","#ccebc5","#ffed6f"
+];
 
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  attribution: "&copy; OpenStreetMap contributors"
-}).addTo(map);
+// Crear mapa SIN mapa base (solo comunas)
+const map = L.map('map', {
+  zoomControl: true,
+  minZoom: 9,
+  maxZoom: 12
+}).setView([-33.45, -70.66], 10);
 
-/* =========================
-   COMUNAS RM
-========================= */
+// Limitar área RM
+map.setMaxBounds([
+  [-34.3, -71.7],
+  [-32.7, -69.8]
+]);
 
-fetch(
-  "https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson"
-)
+let geojson;
+
+function estilo(feature) {
+  const index = feature.properties.OBJECTID % colores.length;
+  return {
+    fillColor: colores[index],
+    weight: 1,
+    color: "#444",
+    fillOpacity: 0.85
+  };
+}
+
+function resaltar(e) {
+  const layer = e.target;
+  layer.setStyle({
+    weight: 3,
+    color: "#000",
+    fillOpacity: 1
+  });
+
+  const nombre =
+    featureName(layer.feature.properties);
+
+  document.getElementById("info").innerHTML =
+    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+}
+
+function resetear(e) {
+  geojson.resetStyle(e.target);
+  document.getElementById("info").innerHTML =
+    "Pase el mouse sobre una comuna";
+}
+
+function featureName(props) {
+  return (
+    props.NOM_COM ||
+    props.COMUNA ||
+    props.NOMBRE ||
+    "Comuna"
+  );
+}
+
+// Cargar comunas RM
+fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
   .then(data => {
 
-    const comunas = L.geoJSON(data, {
-      style: {
-        color: "#444",
-        weight: 1,
-        fillColor: "#74c0fc",
-        fillOpacity: 0.6
-      },
-      onEachFeature: (feature, layer) => {
-        const nombre =
-          feature.properties.NOM_COM ||
-          feature.properties.COMUNA ||
-          "Comuna";
-
-        layer.bindPopup(`<strong>${nombre}</strong>`);
+    geojson = L.geoJSON(data, {
+      style: estilo,
+      onEachFeature: function (feature, layer) {
+        layer.on({
+          mouseover: resaltar,
+          mouseout: resetear
+        });
       }
     }).addTo(map);
 
-    map.fitBounds(comunas.getBounds());
+    map.fitBounds(geojson.getBounds());
   })
-  .catch(err => console.error(err));
+  .catch(err => {
+    console.error(err);
+    document.getElementById("info").innerHTML =
+      "Error cargando comunas";
+  });
 </script>
 
 </body>
