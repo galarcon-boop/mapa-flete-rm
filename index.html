@@ -14,48 +14,41 @@ html, body {
   font-family: Arial, sans-serif;
 }
 
-/* Layout */
-#container {
-  display: flex;
+#map {
   width: 100vw;
   height: 100vh;
 }
 
-#sidebar {
-  width: 260px;
-  background: #f7f7f7;
-  border-right: 1px solid #ccc;
-  padding: 12px;
-  overflow-y: auto;
+/* Buscador */
+#search-box {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: white;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 1000;
+  width: 240px;
 }
 
-#sidebar h2 {
-  margin-top: 0;
-  font-size: 18px;
-  text-align: center;
+#search-box label {
+  font-size: 13px;
+  font-weight: bold;
 }
 
-.comuna-item {
-  padding: 8px 10px;
-  margin-bottom: 4px;
-  cursor: pointer;
-  border-radius: 4px;
+#comuna-select {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px;
+  font-size: 14px;
 }
 
-.comuna-item:hover {
-  background: #e0e0e0;
-}
-
-/* Map */
-#map {
-  flex: 1;
-}
-
-/* Info box */
+/* Info */
 .info {
   position: absolute;
   bottom: 20px;
-  left: 280px;
+  left: 15px;
   background: white;
   padding: 12px 16px;
   font-size: 15px;
@@ -78,14 +71,14 @@ html, body {
 
 <body>
 
-<div id="container">
-  <div id="sidebar">
-    <h2>Comunas</h2>
-    <div id="lista-comunas"></div>
-  </div>
-
-  <div id="map"></div>
+<div id="search-box">
+  <label for="comuna-select">Buscar comuna</label>
+  <select id="comuna-select">
+    <option value="">Seleccione una comuna</option>
+  </select>
 </div>
+
+<div id="map"></div>
 
 <div class="info" id="info">
   Seleccione una comuna
@@ -135,11 +128,15 @@ map.setMaxBounds([
 ]);
 
 /* ===============================
-   FUNCIONES
+   VARIABLES
 ================================ */
 
 let geojson;
 let capasPorComuna = {};
+
+/* ===============================
+   FUNCIONES
+================================ */
 
 function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
@@ -151,7 +148,7 @@ function estilo(feature) {
   };
 }
 
-function destacarCapa(layer) {
+function destacar(layer) {
   geojson.resetStyle();
   layer.setStyle({
     weight: 3,
@@ -195,38 +192,41 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
 
         layer.on("click", () => {
           map.fitBounds(layer.getBounds());
-          destacarCapa(layer);
+          destacar(layer);
           mostrarInfo(nombre);
+          document.getElementById("comuna-select").value = nombre;
         });
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
-    crearListado();
+    cargarSelect();
   });
 
 /* ===============================
-   LISTADO LATERAL
+   BUSCADOR
 ================================ */
 
-function crearListado() {
-  const contenedor = document.getElementById("lista-comunas");
+function cargarSelect() {
+  const select = document.getElementById("comuna-select");
 
-  COMUNAS_ACTIVAS.forEach(nombre => {
-    const div = document.createElement("div");
-    div.className = "comuna-item";
-    div.textContent = nombre;
+  COMUNAS_ACTIVAS.sort().forEach(nombre => {
+    const option = document.createElement("option");
+    option.value = nombre;
+    option.textContent = nombre;
+    select.appendChild(option);
+  });
 
-    div.onclick = () => {
-      const layer = capasPorComuna[nombre];
-      if (!layer) return;
+  select.addEventListener("change", () => {
+    const nombre = select.value;
+    if (!nombre) return;
 
-      map.fitBounds(layer.getBounds());
-      destacarCapa(layer);
-      mostrarInfo(nombre);
-    };
+    const layer = capasPorComuna[nombre];
+    if (!layer) return;
 
-    contenedor.appendChild(div);
+    map.fitBounds(layer.getBounds());
+    destacar(layer);
+    mostrarInfo(nombre);
   });
 }
 </script>
