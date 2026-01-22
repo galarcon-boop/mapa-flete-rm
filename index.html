@@ -114,14 +114,23 @@ const colores = [
    MAPA
 ================================ */
 
+// Zoom inicial = límite mínimo
+const ZOOM_INICIAL = 10;
+
 const map = L.map('map', {
-  zoomControl: true,
+  zoomControl: false,     // lo creamos manual abajo
   dragging: true,
   scrollWheelZoom: true,
-  minZoom: 9,
+  minZoom: ZOOM_INICIAL,  // 👈 NO se puede alejar más
   maxZoom: 13
-}).setView([-33.45, -70.66], 10);
+}).setView([-33.45, -70.66], ZOOM_INICIAL);
 
+// Controles de zoom abajo a la derecha
+L.control.zoom({
+  position: 'bottomright'
+}).addTo(map);
+
+// Limitar movimiento al área RM
 map.setMaxBounds([
   [-34.2, -71.6],
   [-32.8, -69.9]
@@ -191,7 +200,7 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         });
 
         layer.on("click", () => {
-          map.fitBounds(layer.getBounds());
+          map.fitBounds(layer.getBounds(), { maxZoom: 12 });
           destacar(layer);
           mostrarInfo(nombre);
           document.getElementById("comuna-select").value = nombre;
@@ -200,35 +209,32 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
-    cargarSelect();
   });
 
 /* ===============================
    BUSCADOR
 ================================ */
 
-function cargarSelect() {
-  const select = document.getElementById("comuna-select");
+const select = document.getElementById("comuna-select");
 
-  COMUNAS_ACTIVAS.sort().forEach(nombre => {
-    const option = document.createElement("option");
-    option.value = nombre;
-    option.textContent = nombre;
-    select.appendChild(option);
-  });
+COMUNAS_ACTIVAS.sort().forEach(nombre => {
+  const option = document.createElement("option");
+  option.value = nombre;
+  option.textContent = nombre;
+  select.appendChild(option);
+});
 
-  select.addEventListener("change", () => {
-    const nombre = select.value;
-    if (!nombre) return;
+select.addEventListener("change", () => {
+  const nombre = select.value;
+  if (!nombre) return;
 
-    const layer = capasPorComuna[nombre];
-    if (!layer) return;
+  const layer = capasPorComuna[nombre];
+  if (!layer) return;
 
-    map.fitBounds(layer.getBounds());
-    destacar(layer);
-    mostrarInfo(nombre);
-  });
-}
+  map.fitBounds(layer.getBounds(), { maxZoom: 12 });
+  destacar(layer);
+  mostrarInfo(nombre);
+});
 </script>
 
 </body>
