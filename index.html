@@ -60,6 +60,7 @@ html, body {
 
 const FLETE_BASE = 7000;
 
+// Comunas activas (despacho)
 const COMUNAS_ACTIVAS = [
   "Cerro Navia","Renca","Quilicura","Huechuraba","Recoleta",
   "Independencia","Conchalí","Quinta Normal","Estación Central",
@@ -71,6 +72,7 @@ const COMUNAS_ACTIVAS = [
   "La Pintana","Lo Barnechea"
 ];
 
+// Colores alternados
 const colores = [
   "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3",
   "#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd",
@@ -78,21 +80,21 @@ const colores = [
 ];
 
 /* ===============================
-   MAPA CON ZOOM LIMITADO
+   MAPA (ZOOM LIMITADO + DRAG)
 ================================ */
 
 const map = L.map('map', {
-  zoomControl: true,      // mostrar + -
-  dragging: false,        // sin mover el mapa
-  scrollWheelZoom: true,  // zoom con rueda
+  zoomControl: true,
+  dragging: true,          // ✅ ahora se puede mover
+  scrollWheelZoom: true,
   doubleClickZoom: true,
   boxZoom: false,
   keyboard: false,
-  minZoom: 9,             // 🔒 límite mínimo
-  maxZoom: 13             // 🔒 límite máximo
+  minZoom: 10,             // 🔒 no se aleja más que la vista inicial
+  maxZoom: 13              // 🔒 límite de acercamiento
 }).setView([-33.45, -70.66], 10);
 
-// Limitar área RM
+// Limitar área visible a RM
 map.setMaxBounds([
   [-34.2, -71.6],
   [-32.8, -69.9]
