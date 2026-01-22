@@ -30,7 +30,6 @@ html, body {
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   z-index: 1000;
   width: 230px;
-  box-sizing: border-box;
 }
 
 #search-box label {
@@ -46,6 +45,26 @@ html, body {
   padding: 4px 6px;
   font-size: 14px;
   box-sizing: border-box;
+}
+
+/* Dropdown personalizado */
+#dropdown {
+  margin-top: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  display: none;
+}
+
+.dropdown-item {
+  padding: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dropdown-item:hover {
+  background: #f0f0f0;
 }
 
 /* Info */
@@ -76,14 +95,9 @@ html, body {
 <body>
 
 <div id="search-box">
-  <label for="comuna-input">Buscar comuna</label>
-  <input
-    id="comuna-input"
-    list="comunas-list"
-    placeholder="Escriba una comuna"
-    autocomplete="off"
-  >
-  <datalist id="comunas-list"></datalist>
+  <label>Buscar comuna</label>
+  <input id="comuna-input" placeholder="Escriba una comuna">
+  <div id="dropdown"></div>
 </div>
 
 <div id="map"></div>
@@ -138,15 +152,11 @@ map.setMaxBounds([
   [-32.8, -69.9]
 ]);
 
-/* ===============================
-   VARIABLES
-================================ */
-
 let geojson;
 let capasPorComuna = {};
 
 /* ===============================
-   FUNCIONES
+   FUNCIONES MAPA
 ================================ */
 
 function estilo(feature) {
@@ -215,25 +225,47 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
-    cargarDatalist();
   });
 
 /* ===============================
-   BUSCADOR
+   BUSCADOR CONTROLADO
 ================================ */
 
-function cargarDatalist() {
-  const datalist = document.getElementById("comunas-list");
+const input = document.getElementById("comuna-input");
+const dropdown = document.getElementById("dropdown");
 
-  COMUNAS_ACTIVAS.sort().forEach(nombre => {
-    const option = document.createElement("option");
-    option.value = nombre;
-    datalist.appendChild(option);
+input.addEventListener("input", () => {
+  const texto = input.value.toLowerCase();
+  dropdown.innerHTML = "";
+
+  if (!texto) {
+    dropdown.style.display = "none";
+    return;
+  }
+
+  const resultados = COMUNAS_ACTIVAS.filter(c =>
+    c.toLowerCase().includes(texto)
+  );
+
+  resultados.forEach(nombre => {
+    const div = document.createElement("div");
+    div.className = "dropdown-item";
+    div.textContent = nombre;
+    div.onclick = () => {
+      input.value = nombre;
+      dropdown.style.display = "none";
+      irAComuna(nombre);
+    };
+    dropdown.appendChild(div);
   });
-}
 
-document.getElementById("comuna-input").addEventListener("change", e => {
-  irAComuna(e.target.value);
+  dropdown.style.display = resultados.length ? "block" : "none";
+});
+
+document.addEventListener("click", e => {
+  if (!document.getElementById("search-box").contains(e.target)) {
+    dropdown.style.display = "none";
+  }
 });
 </script>
 
