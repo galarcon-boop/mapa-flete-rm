@@ -60,7 +60,6 @@ html, body {
 
 const FLETE_BASE = 7000;
 
-// Comunas que SÍ se despachan
 const COMUNAS_ACTIVAS = [
   "Cerro Navia","Renca","Quilicura","Huechuraba","Recoleta",
   "Independencia","Conchalí","Quinta Normal","Estación Central",
@@ -72,24 +71,28 @@ const COMUNAS_ACTIVAS = [
   "La Pintana","Lo Barnechea"
 ];
 
-// Colores alternados
 const colores = [
   "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3",
   "#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd",
   "#ccebc5","#ffed6f"
 ];
 
-// Crear mapa RM (sin zoom ni paneo)
+/* ===============================
+   MAPA CON ZOOM LIMITADO
+================================ */
+
 const map = L.map('map', {
-  zoomControl: false,
-  dragging: false,
-  scrollWheelZoom: false,
-  doubleClickZoom: false,
+  zoomControl: true,      // mostrar + -
+  dragging: false,        // sin mover el mapa
+  scrollWheelZoom: true,  // zoom con rueda
+  doubleClickZoom: true,
   boxZoom: false,
-  keyboard: false
+  keyboard: false,
+  minZoom: 9,             // 🔒 límite mínimo
+  maxZoom: 13             // 🔒 límite máximo
 }).setView([-33.45, -70.66], 10);
 
-// Limitar vista
+// Limitar área RM
 map.setMaxBounds([
   [-34.2, -71.6],
   [-32.8, -69.9]
@@ -138,7 +141,7 @@ function resetear(e) {
 
 let geojson;
 
-fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
+fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&outSR=4326&f=geojson")
   .then(r => r.json())
   .then(data => {
 
