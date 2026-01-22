@@ -37,7 +37,7 @@ html, body {
   font-weight: bold;
 }
 
-#comuna-select {
+#comuna-input {
   width: 100%;
   margin-top: 6px;
   padding: 6px;
@@ -72,10 +72,9 @@ html, body {
 <body>
 
 <div id="search-box">
-  <label for="comuna-select">Buscar comuna</label>
-  <select id="comuna-select">
-    <option value="">Seleccione una comuna</option>
-  </select>
+  <label for="comuna-input">Buscar comuna</label>
+  <input id="comuna-input" list="comunas-list" placeholder="Escriba una comuna">
+  <datalist id="comunas-list"></datalist>
 </div>
 
 <div id="map"></div>
@@ -92,6 +91,7 @@ html, body {
 ================================ */
 
 const FLETE_BASE = 7000;
+const ZOOM_INICIAL = 10;
 
 const COMUNAS_ACTIVAS = [
   "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
@@ -114,23 +114,16 @@ const colores = [
    MAPA
 ================================ */
 
-// Zoom inicial = límite mínimo
-const ZOOM_INICIAL = 10;
-
 const map = L.map('map', {
-  zoomControl: false,     // lo creamos manual abajo
+  zoomControl: false,
   dragging: true,
   scrollWheelZoom: true,
-  minZoom: ZOOM_INICIAL,  // 👈 NO se puede alejar más
+  minZoom: ZOOM_INICIAL,
   maxZoom: 13
 }).setView([-33.45, -70.66], ZOOM_INICIAL);
 
-// Controles de zoom abajo a la derecha
-L.control.zoom({
-  position: 'bottomright'
-}).addTo(map);
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-// Limitar movimiento al área RM
 map.setMaxBounds([
   [-34.2, -71.6],
   [-32.8, -69.9]
@@ -171,6 +164,15 @@ function mostrarInfo(nombre) {
     `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 }
 
+function irAComuna(nombre) {
+  const layer = capasPorComuna[nombre];
+  if (!layer) return;
+
+  map.fitBounds(layer.getBounds(), { maxZoom: 12 });
+  destacar(layer);
+  mostrarInfo(nombre);
+}
+
 /* ===============================
    CARGA COMUNAS
 ================================ */
@@ -199,41 +201,30 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
           className: "label-comuna"
         });
 
-        layer.on("click", () => {
-          map.fitBounds(layer.getBounds(), { maxZoom: 12 });
-          destacar(layer);
-          mostrarInfo(nombre);
-          document.getElementById("comuna-select").value = nombre;
-        });
+        layer.on("click", () => irAComuna(nombre));
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
+    cargarDatalist();
   });
 
 /* ===============================
    BUSCADOR
 ================================ */
 
-const select = document.getElementById("comuna-select");
+function cargarDatalist() {
+  const datalist = document.getElementById("comunas-list");
 
-COMUNAS_ACTIVAS.sort().forEach(nombre => {
-  const option = document.createElement("option");
-  option.value = nombre;
-  option.textContent = nombre;
-  select.appendChild(option);
-});
+  COMUNAS_ACTIVAS.sort().forEach(nombre => {
+    const option = document.createElement("option");
+    option.value = nombre;
+    datalist.appendChild(option);
+  });
+}
 
-select.addEventListener("change", () => {
-  const nombre = select.value;
-  if (!nombre) return;
-
-  const layer = capasPorComuna[nombre];
-  if (!layer) return;
-
-  map.fitBounds(layer.getBounds(), { maxZoom: 12 });
-  destacar(layer);
-  mostrarInfo(nombre);
+document.getElementById("comuna-input").addEventListener("change", e => {
+  irAComuna(e.target.value);
 });
 </script>
 
