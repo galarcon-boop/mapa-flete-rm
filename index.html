@@ -11,21 +11,53 @@ html, body {
   margin: 0;
   padding: 0;
   background: white;
+  font-family: Arial, sans-serif;
 }
 
-#map {
+/* Layout */
+#container {
+  display: flex;
   width: 100vw;
   height: 100vh;
-  background: white;
 }
 
+#sidebar {
+  width: 260px;
+  background: #f7f7f7;
+  border-right: 1px solid #ccc;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+#sidebar h2 {
+  margin-top: 0;
+  font-size: 18px;
+  text-align: center;
+}
+
+.comuna-item {
+  padding: 8px 10px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.comuna-item:hover {
+  background: #e0e0e0;
+}
+
+/* Map */
+#map {
+  flex: 1;
+}
+
+/* Info box */
 .info {
   position: absolute;
   bottom: 20px;
-  left: 20px;
+  left: 280px;
   background: white;
   padding: 12px 16px;
-  font-family: Arial, sans-serif;
   font-size: 15px;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -46,33 +78,39 @@ html, body {
 
 <body>
 
-<div id="map"></div>
+<div id="container">
+  <div id="sidebar">
+    <h2>Comunas</h2>
+    <div id="lista-comunas"></div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
 <div class="info" id="info">
-  Pase el mouse sobre una comuna
+  Seleccione una comuna
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
 /* ===============================
-   CONFIGURACIÓN GENERAL
+   CONFIGURACIÓN
 ================================ */
 
 const FLETE_BASE = 7000;
 
-// Comunas activas (despacho)
 const COMUNAS_ACTIVAS = [
-  "Cerro Navia","Renca","Quilicura","Huechuraba","Recoleta",
-  "Independencia","Conchalí","Quinta Normal","Estación Central",
-  "Cerrillos","Pedro Aguirre Cerda","San Joaquín","Macul",
-  "Peñalolén","La Florida","La Cisterna","San Miguel","Lo Espejo",
-  "La Granja","Providencia","Ñuñoa","Santiago","Maipú","Pudahuel",
-  "Las Condes","La Reina","Vitacura","Lo Prado","El Bosque",
-  "San Ramón","Lampa","Puente Alto","San Bernardo",
-  "La Pintana","Lo Barnechea"
+  "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
+  "Huechuraba","Independencia","La Cisterna","La Florida","La Granja",
+  "La Pintana","La Reina","Lampa","Las Condes","Lo Barnechea",
+  "Lo Espejo","Lo Prado","Macul","Maipú","Ñuñoa",
+  "Pedro Aguirre Cerda","Peñalolén","Providencia","Pudahuel",
+  "Puente Alto","Quilicura","Quinta Normal","Recoleta","Renca",
+  "San Bernardo","San Joaquín","San Miguel","San Ramón",
+  "Santiago","Vitacura"
 ];
 
-// Colores alternados
 const colores = [
   "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3",
   "#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd",
@@ -80,21 +118,17 @@ const colores = [
 ];
 
 /* ===============================
-   MAPA (ZOOM LIMITADO + DRAG)
+   MAPA
 ================================ */
 
 const map = L.map('map', {
   zoomControl: true,
-  dragging: true,          // ✅ ahora se puede mover
+  dragging: true,
   scrollWheelZoom: true,
-  doubleClickZoom: true,
-  boxZoom: false,
-  keyboard: false,
-  minZoom: 10,             // 🔒 no se aleja más que la vista inicial
-  maxZoom: 13              // 🔒 límite de acercamiento
+  minZoom: 9,
+  maxZoom: 13
 }).setView([-33.45, -70.66], 10);
 
-// Limitar área visible a RM
 map.setMaxBounds([
   [-34.2, -71.6],
   [-32.8, -69.9]
@@ -103,6 +137,9 @@ map.setMaxBounds([
 /* ===============================
    FUNCIONES
 ================================ */
+
+let geojson;
+let capasPorComuna = {};
 
 function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
@@ -114,47 +151,32 @@ function estilo(feature) {
   };
 }
 
-function resaltar(e) {
-  const layer = e.target;
+function destacarCapa(layer) {
+  geojson.resetStyle();
   layer.setStyle({
     weight: 3,
     color: "#000",
     fillOpacity: 1
   });
+}
 
-  const nombre =
-    layer.feature.properties.NOM_COM ||
-    layer.feature.properties.COMUNA ||
-    "Comuna";
-
+function mostrarInfo(nombre) {
   document.getElementById("info").innerHTML =
     `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 }
 
-function resetear(e) {
-  geojson.resetStyle(e.target);
-  document.getElementById("info").innerHTML =
-    "Pase el mouse sobre una comuna";
-}
-
 /* ===============================
-   CARGA COMUNAS RM
+   CARGA COMUNAS
 ================================ */
 
-let geojson;
-
-fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&outSR=4326&f=geojson")
+fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
   .then(data => {
 
     geojson = L.geoJSON(data, {
-      filter: function (feature) {
-        const nombre =
-          feature.properties.NOM_COM ||
-          feature.properties.COMUNA ||
-          "";
-        return COMUNAS_ACTIVAS.includes(nombre);
-      },
+      filter: f => COMUNAS_ACTIVAS.includes(
+        f.properties.NOM_COM || f.properties.COMUNA || ""
+      ),
       style: estilo,
       onEachFeature: function (feature, layer) {
 
@@ -163,27 +185,50 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
           feature.properties.COMUNA ||
           "";
 
+        capasPorComuna[nombre] = layer;
+
         layer.bindTooltip(nombre, {
           permanent: true,
           direction: "center",
           className: "label-comuna"
         });
 
-        layer.on({
-          mouseover: resaltar,
-          mouseout: resetear
+        layer.on("click", () => {
+          map.fitBounds(layer.getBounds());
+          destacarCapa(layer);
+          mostrarInfo(nombre);
         });
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
-
-  })
-  .catch(err => {
-    document.getElementById("info").innerHTML =
-      "Error cargando comunas RM";
-    console.error(err);
+    crearListado();
   });
+
+/* ===============================
+   LISTADO LATERAL
+================================ */
+
+function crearListado() {
+  const contenedor = document.getElementById("lista-comunas");
+
+  COMUNAS_ACTIVAS.forEach(nombre => {
+    const div = document.createElement("div");
+    div.className = "comuna-item";
+    div.textContent = nombre;
+
+    div.onclick = () => {
+      const layer = capasPorComuna[nombre];
+      if (!layer) return;
+
+      map.fitBounds(layer.getBounds());
+      destacarCapa(layer);
+      mostrarInfo(nombre);
+    };
+
+    contenedor.appendChild(div);
+  });
+}
 </script>
 
 </body>
