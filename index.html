@@ -193,7 +193,7 @@ function irAComuna(nombre) {
 }
 
 /* ===============================
-   CARGA COMUNAS RM
+   CARGA COMUNAS
 ================================ */
 
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
@@ -225,32 +225,27 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
+
+    /* ===============================
+       AUTOPISTA AMÉRICO VESPUCIO
+    ================================ */
+
+    fetch("./data/americo_vespucio.geojson")
+      .then(r => r.json())
+      .then(avData => {
+        L.geoJSON(avData, {
+          style: {
+            color: "#c00000",
+            weight: 5,
+            opacity: 0.95
+          }
+        })
+        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
+        .addTo(map);
+      })
+      .catch(err => console.error("Error AV:", err));
+
   });
-
-/* ===============================
-   AMÉRICO VESPUCIO (TRAZADO REAL)
-================================ */
-
-fetch("https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/Autopistas_RM/FeatureServer/0/query?where=UPPER(NOMBRE) LIKE '%VESPUCIO%'&outFields=*&f=geojson")
-  .then(r => r.json())
-  .then(data => {
-
-    L.geoJSON(data, {
-      style: {
-        color: "#c00000",
-        weight: 6,
-        opacity: 1
-      }
-    })
-    .bindTooltip("Autopista Américo Vespucio", {
-      sticky: true,
-      direction: "top",
-      className: "label-comuna"
-    })
-    .addTo(map);
-
-  })
-  .catch(err => console.error("Error cargando Américo Vespucio", err));
 
 /* ===============================
    BUSCADOR
