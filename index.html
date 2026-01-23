@@ -20,7 +20,7 @@ html, body {
 }
 
 /* ===============================
-   BUSCADOR + LEYENDA
+   BUSCADOR
 ================================ */
 
 #search-box {
@@ -47,6 +47,7 @@ html, body {
   height: 30px;
   padding: 4px 6px;
   font-size: 14px;
+  box-sizing: border-box; /* 🔴 FIX */
 }
 
 #dropdown {
@@ -68,25 +69,10 @@ html, body {
   background: #f0f0f0;
 }
 
-/* Leyenda */
-#legend {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid #ddd;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+/* ===============================
+   INFO
+================================ */
 
-.legend-line {
-  width: 30px;
-  height: 4px;
-  background: #c00000;
-  opacity: 0.6;
-}
-
-/* Info */
 .info {
   position: absolute;
   bottom: 20px;
@@ -99,14 +85,15 @@ html, body {
   z-index: 999;
 }
 
-/* Tooltip comuna */
+/* 🔴 TOOLTIP SIN RECUADRO */
 .label-comuna {
   font-size: 12px;
   font-weight: bold;
-  background: rgba(255,255,255,0.85);
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid #aaa;
+  color: #333;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
 }
 </style>
 </head>
@@ -117,12 +104,6 @@ html, body {
   <label>Buscar comuna</label>
   <input id="comuna-input" placeholder="Escriba una comuna">
   <div id="dropdown"></div>
-
-  <!-- LEYENDA -->
-  <div id="legend">
-    <div class="legend-line"></div>
-    Autopista Américo Vespucio
-  </div>
 </div>
 
 <div id="map"></div>
@@ -134,10 +115,6 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-/* ===============================
-   CONFIGURACIÓN
-================================ */
-
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
 
@@ -157,10 +134,6 @@ const colores = [
   "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee"
 ];
 
-/* ===============================
-   MAPA
-================================ */
-
 const map = L.map('map', {
   zoomControl: false,
   minZoom: ZOOM_INICIAL,
@@ -172,10 +145,6 @@ L.control.zoom({ position: 'bottomright' }).addTo(map);
 let geojson;
 let capasPorComuna = {};
 let comunaSeleccionada = null;
-
-/* ===============================
-   FUNCIONES
-================================ */
 
 function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
@@ -217,10 +186,6 @@ function irAComuna(nombre) {
   layer.openTooltip();
 }
 
-/* ===============================
-   CARGA COMUNAS
-================================ */
-
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
   .then(data => {
@@ -252,7 +217,6 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
 
     map.fitBounds(geojson.getBounds());
 
-    /* AUTOPISTA */
     fetch("./data/americo_vespucio.geojson")
       .then(r => r.json())
       .then(av => {
@@ -265,10 +229,6 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         }).addTo(map);
       });
   });
-
-/* ===============================
-   BUSCADOR
-================================ */
 
 const input = document.getElementById("comuna-input");
 const dropdown = document.getElementById("dropdown");
