@@ -128,9 +128,9 @@ const COMUNAS_ACTIVAS = [
 ];
 
 const colores = [
-  "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3",
-  "#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd",
-  "#ccebc5","#ffed6f"
+  "#cfeeee","#fff4cc","#e6def2","#f7d6d0","#dbe9f6",
+  "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee",
+  "#e9f3e3","#fff2cc"
 ];
 
 /* ===============================
@@ -163,9 +163,9 @@ function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
   return {
     fillColor: colores[index],
-    weight: 1,
-    color: "#555",
-    fillOpacity: 0.85
+    weight: 0.8,
+    color: "#999",
+    fillOpacity: 0.45
   };
 }
 
@@ -174,7 +174,7 @@ function destacar(layer) {
   layer.setStyle({
     weight: 3,
     color: "#000",
-    fillOpacity: 1
+    fillOpacity: 0.85
   });
 }
 
@@ -236,14 +236,13 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         L.geoJSON(avData, {
           style: {
             color: "#c00000",
-            weight: 5,
-            opacity: 0.95
+            weight: 4,
+            opacity: 0.6
           }
         })
         .bindTooltip("Autopista Américo Vespucio", { sticky: true })
         .addTo(map);
-      })
-      .catch(err => console.error("Error AV:", err));
+      });
 
   });
 
