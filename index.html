@@ -193,67 +193,59 @@ function irAComuna(nombre) {
 }
 
 /* ===============================
-   COMUNAS
+   CARGA COMUNAS
 ================================ */
 
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
-.then(r => r.json())
-.then(data => {
+  .then(r => r.json())
+  .then(data => {
 
-  geojson = L.geoJSON(data, {
-    filter: f => COMUNAS_ACTIVAS.includes(
-      f.properties.NOM_COM || f.properties.COMUNA || ""
-    ),
-    style: estilo,
-    onEachFeature: (feature, layer) => {
+    geojson = L.geoJSON(data, {
+      filter: f => COMUNAS_ACTIVAS.includes(
+        f.properties.NOM_COM || f.properties.COMUNA || ""
+      ),
+      style: estilo,
+      onEachFeature: function (feature, layer) {
 
-      const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
+        const nombre =
+          feature.properties.NOM_COM ||
+          feature.properties.COMUNA ||
+          "";
 
-      capasPorComuna[nombre] = layer;
+        capasPorComuna[nombre] = layer;
 
-      layer.bindTooltip(nombre, {
-        permanent: true,
-        direction: "center",
-        className: "label-comuna"
-      });
+        layer.bindTooltip(nombre, {
+          permanent: true,
+          direction: "center",
+          className: "label-comuna"
+        });
 
-      layer.on("click", () => irAComuna(nombre));
-    }
-  }).addTo(map);
+        layer.on("click", () => irAComuna(nombre));
+      }
+    }).addTo(map);
 
-  map.fitBounds(geojson.getBounds());
-});
+    map.fitBounds(geojson.getBounds());
 
-/* ===============================
-   AMÉRICO VESPUCIO (OVERPASS)
-================================ */
+    /* ===============================
+       AUTOPISTA AMÉRICO VESPUCIO
+    ================================ */
 
-fetch("https://overpass-api.de/api/interpreter", {
-  method: "POST",
-  headers: { "Content-Type": "text/plain" },
-  body: `
-[out:json][timeout:25];
-(
-  way["name"="Autopista Américo Vespucio Norte"](-33.7,-70.9,-33.2,-70.4);
-  way["name"="Autopista Américo Vespucio Sur"](-33.7,-70.9,-33.2,-70.4);
-  way["name"="Autopista Américo Vespucio Oriente"](-33.7,-70.9,-33.2,-70.4);
-);
-out geom;
-`
-})
-.then(r => r.json())
-.then(data => {
-  data.elements
-    .filter(e => e.type === "way")
-    .forEach(way => {
-      const latlngs = way.geometry.map(p => [p.lat, p.lon]);
-      L.polyline(latlngs, {
-        color: "#c00000",
-        weight: 6,
-        opacity: 0.95
-      }).addTo(map);
-    });
-});
+    fetch("./data/americo_vespucio.geojson")
+      .then(r => r.json())
+      .then(avData => {
+        L.geoJSON(avData, {
+          style: {
+            color: "#c00000",
+            weight: 5,
+            opacity: 0.95
+          }
+        })
+        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
+        .addTo(map);
+      })
+      .catch(err => console.error("Error AV:", err));
+
+  });
 
 /* ===============================
    BUSCADOR
