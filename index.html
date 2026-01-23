@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -156,7 +156,7 @@ let geojson;
 let capasPorComuna = {};
 
 /* ===============================
-   FUNCIONES MAPA
+   FUNCIONES
 ================================ */
 
 function estilo(feature) {
@@ -225,25 +225,22 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
+  });
 
-    /* ===============================
-       AMÉRICO VESPUCIO (TRAZADO REALISTA)
-    ================================ */
+/* ===============================
+   AMÉRICO VESPUCIO (TRAZADO REAL)
+================================ */
 
-    const americoVespucioCoords = [
-      [-33.357,-70.680],[-33.365,-70.705],[-33.380,-70.735],
-      [-33.410,-70.760],[-33.445,-70.770],[-33.485,-70.770],
-      [-33.525,-70.750],[-33.555,-70.725],[-33.580,-70.690],
-      [-33.585,-70.650],[-33.580,-70.615],[-33.565,-70.585],
-      [-33.545,-70.560],[-33.515,-70.545],[-33.485,-70.540],
-      [-33.450,-70.540],[-33.415,-70.550],[-33.385,-70.565],
-      [-33.365,-70.590],[-33.355,-70.620],[-33.357,-70.680]
-    ];
+fetch("https://raw.githubusercontent.com/andres-morales/geojson-chile/master/autopistas/americo_vespucio.geojson")
+  .then(r => r.json())
+  .then(data => {
 
-    L.polyline(americoVespucioCoords, {
-      color: "#c00000",
-      weight: 5,
-      opacity: 0.95
+    L.geoJSON(data, {
+      style: {
+        color: "#c00000",
+        weight: 5,
+        opacity: 0.95
+      }
     })
     .bindTooltip("Autopista Américo Vespucio", {
       sticky: true,
@@ -252,7 +249,8 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     })
     .addTo(map);
 
-  });
+  })
+  .catch(err => console.error("Error cargando Américo Vespucio", err));
 
 /* ===============================
    BUSCADOR
