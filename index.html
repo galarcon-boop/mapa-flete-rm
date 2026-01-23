@@ -90,6 +90,33 @@ html, body {
   border-radius: 4px;
   border: 1px solid #aaa;
 }
+
+/* Leyenda */
+.legend {
+  position: absolute;
+  bottom: 20px;
+  right: 15px;
+  background: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  font-size: 13px;
+  z-index: 999;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-line {
+  width: 28px;
+  height: 4px;
+  background: #c00000;
+  border-radius: 2px;
+}
 </style>
 </head>
 
@@ -105,6 +132,14 @@ html, body {
 
 <div class="info" id="info">
   Seleccione una comuna
+</div>
+
+<!-- LEYENDA -->
+<div class="legend">
+  <div class="legend-item">
+    <div class="legend-line"></div>
+    <span>Autopista Américo Vespucio</span>
+  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -195,7 +230,6 @@ function irAComuna(nombre) {
 
   if (tooltipActivo) {
     map.removeLayer(tooltipActivo);
-    tooltipActivo = null;
   }
 
   tooltipActivo = L.tooltip({
@@ -229,17 +263,13 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
           "";
 
         capasPorComuna[nombre] = layer;
-
         layer.on("click", () => irAComuna(nombre));
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
 
-    /* ===============================
-       AUTOPISTA AMÉRICO VESPUCIO
-    ================================ */
-
+    /* AUTOPISTA AMÉRICO VESPUCIO */
     fetch("./data/americo_vespucio.geojson")
       .then(r => r.json())
       .then(avData => {
@@ -249,11 +279,8 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
             weight: 4,
             opacity: 0.6
           }
-        })
-        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
-        .addTo(map);
+        }).addTo(map);
       });
-
   });
 
 /* ===============================
