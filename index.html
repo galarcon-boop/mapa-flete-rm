@@ -19,7 +19,10 @@ html, body {
   height: 100vh;
 }
 
-/* Buscador */
+/* ===============================
+   BUSCADOR
+================================ */
+
 #search-box {
   position: absolute;
   top: 15px;
@@ -67,7 +70,10 @@ html, body {
   background: #f0f0f0;
 }
 
-/* Info */
+/* ===============================
+   INFO
+================================ */
+
 .info {
   position: absolute;
   bottom: 20px;
@@ -81,13 +87,15 @@ html, body {
   z-index: 999;
 }
 
-.label-comuna {
-  font-size: 11px;
-  font-weight: bold;
-  color: #333;
-  background: transparent;
-  border: none;
-  box-shadow: none;
+/* ===============================
+   ANIMACIÓN COMUNAS
+================================ */
+
+.comuna {
+  transition:
+    fill-opacity 0.25s ease,
+    stroke-width 0.25s ease,
+    stroke 0.25s ease;
 }
 </style>
 </head>
@@ -128,9 +136,9 @@ const COMUNAS_ACTIVAS = [
 ];
 
 const colores = [
-  "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3",
-  "#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd",
-  "#ccebc5","#ffed6f"
+  "#cfeeee","#fff4cc","#e6def2","#f7d6d0","#dbe9f6",
+  "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee",
+  "#e9f3e3","#fff2cc"
 ];
 
 /* ===============================
@@ -154,6 +162,7 @@ map.setMaxBounds([
 
 let geojson;
 let capasPorComuna = {};
+let comunaSeleccionada = null;
 
 /* ===============================
    FUNCIONES
@@ -163,33 +172,40 @@ function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
   return {
     fillColor: colores[index],
-    weight: 1,
-    color: "#555",
-    fillOpacity: 0.85
+    weight: 0.8,
+    color: "#aaa",
+    fillOpacity: 0.4,
+    className: "comuna"
   };
 }
 
-function destacar(layer) {
-  geojson.resetStyle();
+function highlightHover(layer) {
+  if (layer === comunaSeleccionada) return;
   layer.setStyle({
-    weight: 3,
-    color: "#000",
-    fillOpacity: 1
+    fillOpacity: 0.6,
+    weight: 1.5
   });
 }
 
-function mostrarInfo(nombre) {
-  document.getElementById("info").innerHTML =
-    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+function resetHover(layer) {
+  if (layer === comunaSeleccionada) return;
+  geojson.resetStyle(layer);
 }
 
-function irAComuna(nombre) {
-  const layer = capasPorComuna[nombre];
-  if (!layer) return;
+function seleccionar(layer, nombre) {
+  comunaSeleccionada = layer;
+  geojson.resetStyle();
+
+  layer.setStyle({
+    fillOpacity: 0.85,
+    weight: 3,
+    color: "#000"
+  });
 
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
-  destacar(layer);
-  mostrarInfo(nombre);
+
+  document.getElementById("info").innerHTML =
+    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 }
 
 /* ===============================
@@ -214,13 +230,11 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
 
         capasPorComuna[nombre] = layer;
 
-        layer.bindTooltip(nombre, {
-          permanent: true,
-          direction: "center",
-          className: "label-comuna"
+        layer.on({
+          mouseover: () => highlightHover(layer),
+          mouseout: () => resetHover(layer),
+          click: () => seleccionar(layer, nombre)
         });
-
-        layer.on("click", () => irAComuna(nombre));
       }
     }).addTo(map);
 
@@ -236,15 +250,13 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         L.geoJSON(avData, {
           style: {
             color: "#c00000",
-            weight: 5,
-            opacity: 0.95
+            weight: 4,
+            opacity: 0.6
           }
         })
         .bindTooltip("Autopista Américo Vespucio", { sticky: true })
         .addTo(map);
-      })
-      .catch(err => console.error("Error AV:", err));
-
+      });
   });
 
 /* ===============================
@@ -272,7 +284,7 @@ input.addEventListener("input", () => {
       div.onclick = () => {
         input.value = nombre;
         dropdown.style.display = "none";
-        irAComuna(nombre);
+        seleccionar(capasPorComuna[nombre], nombre);
       };
       dropdown.appendChild(div);
     });
@@ -285,3 +297,7 @@ document.addEventListener("click", e => {
     dropdown.style.display = "none";
   }
 });
+</script>
+
+</body>
+</html>
