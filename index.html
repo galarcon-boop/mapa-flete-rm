@@ -81,21 +81,11 @@ html, body {
   z-index: 999;
 }
 
-.label-comuna {
-  font-size: 12px;
-  font-weight: bold;
-  color: #222;
-  background: rgba(255,255,255,0.85);
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid #aaa;
-}
-
 /* Leyenda */
 .legend {
   position: absolute;
-  bottom: 20px;
-  right: 15px;
+  top: 95px; /* debajo del buscador */
+  left: 15px;
   background: white;
   padding: 8px 12px;
   border-radius: 6px;
@@ -105,17 +95,16 @@ html, body {
   z-index: 999;
 }
 
-.legend-item {
+.legend-line {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.legend-line {
-  width: 28px;
+.legend-color {
+  width: 30px;
   height: 4px;
   background: #c00000;
-  border-radius: 2px;
 }
 </style>
 </head>
@@ -128,18 +117,17 @@ html, body {
   <div id="dropdown"></div>
 </div>
 
+<div class="legend">
+  <div class="legend-line">
+    <div class="legend-color"></div>
+    Autopista Américo Vespucio
+  </div>
+</div>
+
 <div id="map"></div>
 
 <div class="info" id="info">
   Seleccione una comuna
-</div>
-
-<!-- LEYENDA -->
-<div class="legend">
-  <div class="legend-item">
-    <div class="legend-line"></div>
-    <span>Autopista Américo Vespucio</span>
-  </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -190,7 +178,6 @@ map.setMaxBounds([
 
 let geojson;
 let capasPorComuna = {};
-let tooltipActivo = null;
 
 /* ===============================
    FUNCIONES
@@ -227,19 +214,6 @@ function irAComuna(nombre) {
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
   destacar(layer);
   mostrarInfo(nombre);
-
-  if (tooltipActivo) {
-    map.removeLayer(tooltipActivo);
-  }
-
-  tooltipActivo = L.tooltip({
-    permanent: true,
-    direction: "center",
-    className: "label-comuna"
-  })
-    .setContent(nombre)
-    .setLatLng(layer.getBounds().getCenter())
-    .addTo(map);
 }
 
 /* ===============================
@@ -263,13 +237,24 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
           "";
 
         capasPorComuna[nombre] = layer;
-        layer.on("click", () => irAComuna(nombre));
+
+        layer.on({
+          mouseover: () => {
+            destacar(layer);
+            mostrarInfo(nombre);
+          },
+          mouseout: () => geojson.resetStyle(),
+          click: () => irAComuna(nombre)
+        });
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
 
-    /* AUTOPISTA AMÉRICO VESPUCIO */
+    /* ===============================
+       AUTOPISTA AMÉRICO VESPUCIO
+    ================================ */
+
     fetch("./data/americo_vespucio.geojson")
       .then(r => r.json())
       .then(avData => {
@@ -281,6 +266,7 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
           }
         }).addTo(map);
       });
+
   });
 
 /* ===============================
