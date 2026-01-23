@@ -115,7 +115,6 @@ html, body {
 
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
-const ZOOM_MOSTRAR_NOMBRES = 12;
 
 const COMUNAS_ACTIVAS = [
   "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
@@ -155,7 +154,6 @@ map.setMaxBounds([
 
 let geojson;
 let capasPorComuna = {};
-let labelsPorComuna = {};
 
 /* ===============================
    FUNCIONES
@@ -216,13 +214,11 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
 
         capasPorComuna[nombre] = layer;
 
-        const tooltip = layer.bindTooltip(nombre, {
-          permanent: false,
+        layer.bindTooltip(nombre, {
+          permanent: true,
           direction: "center",
           className: "label-comuna"
         });
-
-        labelsPorComuna[nombre] = tooltip;
 
         layer.on("click", () => irAComuna(nombre));
       }
@@ -247,23 +243,8 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         .bindTooltip("Autopista Américo Vespucio", { sticky: true })
         .addTo(map);
       });
+
   });
-
-/* ===============================
-   MOSTRAR / OCULTAR NOMBRES POR ZOOM
-================================ */
-
-map.on("zoomend", () => {
-  const zoom = map.getZoom();
-
-  Object.values(capasPorComuna).forEach(layer => {
-    if (zoom >= ZOOM_MOSTRAR_NOMBRES) {
-      layer.openTooltip();
-    } else {
-      layer.closeTooltip();
-    }
-  });
-});
 
 /* ===============================
    BUSCADOR
