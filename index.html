@@ -19,7 +19,10 @@ html, body {
   height: 100vh;
 }
 
-/* Buscador */
+/* ===============================
+   BUSCADOR + LEYENDA
+================================ */
+
 #search-box {
   position: absolute;
   top: 15px;
@@ -44,7 +47,6 @@ html, body {
   height: 30px;
   padding: 4px 6px;
   font-size: 14px;
-  box-sizing: border-box;
 }
 
 #dropdown {
@@ -60,11 +62,28 @@ html, body {
 .dropdown-item {
   padding: 6px;
   cursor: pointer;
-  font-size: 14px;
 }
 
 .dropdown-item:hover {
   background: #f0f0f0;
+}
+
+/* Leyenda */
+#legend {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid #ddd;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-line {
+  width: 30px;
+  height: 4px;
+  background: #c00000;
+  opacity: 0.6;
 }
 
 /* Info */
@@ -75,21 +94,19 @@ html, body {
   background: white;
   padding: 12px 16px;
   font-size: 15px;
-  border: 1px solid #ccc;
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   z-index: 999;
 }
 
-/* Etiqueta comuna */
+/* Tooltip comuna */
 .label-comuna {
   font-size: 12px;
   font-weight: bold;
-  color: #000;
   background: rgba(255,255,255,0.85);
   padding: 2px 6px;
   border-radius: 4px;
-  border: 1px solid #999;
+  border: 1px solid #aaa;
 }
 </style>
 </head>
@@ -100,6 +117,12 @@ html, body {
   <label>Buscar comuna</label>
   <input id="comuna-input" placeholder="Escriba una comuna">
   <div id="dropdown"></div>
+
+  <!-- LEYENDA -->
+  <div id="legend">
+    <div class="legend-line"></div>
+    Autopista Américo Vespucio
+  </div>
 </div>
 
 <div id="map"></div>
@@ -159,7 +182,7 @@ function estilo(feature) {
   return {
     fillColor: colores[index],
     weight: 0.8,
-    color: "#999",
+    color: "#aaa",
     fillOpacity: 0.4
   };
 }
@@ -167,9 +190,9 @@ function estilo(feature) {
 function destacar(layer) {
   geojson.resetStyle();
   layer.setStyle({
-    weight: 3,
-    color: "#000",
-    fillOpacity: 0.75
+    weight: 2,
+    color: "#666",
+    fillOpacity: 0.65
   });
 }
 
@@ -182,7 +205,7 @@ function irAComuna(nombre) {
   const layer = capasPorComuna[nombre];
   if (!layer) return;
 
-  if (comunaSeleccionada) {
+  if (comunaSeleccionada && comunaSeleccionada !== layer) {
     comunaSeleccionada.closeTooltip();
   }
 
@@ -207,29 +230,20 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         f.properties.NOM_COM || f.properties.COMUNA || ""
       ),
       style: estilo,
-      onEachFeature: function (feature, layer) {
+      onEachFeature: (feature, layer) => {
 
-        const nombre =
-          feature.properties.NOM_COM ||
-          feature.properties.COMUNA ||
-          "";
-
+        const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
         capasPorComuna[nombre] = layer;
 
         layer.bindTooltip(nombre, {
-          permanent: false,
           direction: "center",
           className: "label-comuna"
         });
 
         layer.on({
-          mouseover: () => {
-            layer.openTooltip();
-          },
+          mouseover: () => layer.openTooltip(),
           mouseout: () => {
-            if (layer !== comunaSeleccionada) {
-              layer.closeTooltip();
-            }
+            if (layer !== comunaSeleccionada) layer.closeTooltip();
           },
           click: () => irAComuna(nombre)
         });
@@ -238,14 +252,11 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
 
     map.fitBounds(geojson.getBounds());
 
-    /* ===============================
-       AUTOPISTA AMÉRICO VESPUCIO
-    ================================ */
-
+    /* AUTOPISTA */
     fetch("./data/americo_vespucio.geojson")
       .then(r => r.json())
-      .then(avData => {
-        L.geoJSON(avData, {
+      .then(av => {
+        L.geoJSON(av, {
           style: {
             color: "#c00000",
             weight: 4,
@@ -286,12 +297,6 @@ input.addEventListener("input", () => {
     });
 
   dropdown.style.display = "block";
-});
-
-document.addEventListener("click", e => {
-  if (!document.getElementById("search-box").contains(e.target)) {
-    dropdown.style.display = "none";
-  }
 });
 </script>
 
