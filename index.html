@@ -33,8 +33,10 @@ html, body {
 }
 
 #search-box label {
+  display: block;
   font-size: 13px;
   font-weight: bold;
+  margin-bottom: 4px;
 }
 
 #comuna-input {
@@ -42,6 +44,7 @@ html, body {
   height: 30px;
   padding: 4px 6px;
   font-size: 14px;
+  box-sizing: border-box;
 }
 
 #dropdown {
@@ -71,16 +74,16 @@ html, body {
   background: white;
   padding: 12px 16px;
   font-size: 15px;
-  border-radius: 6px;
   border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   z-index: 999;
 }
 
-/* Labels comunas */
 .label-comuna {
   font-size: 11px;
   font-weight: bold;
-  color: #444;
+  color: #333;
   background: rgba(255,255,255,0.7);
   padding: 1px 3px;
   border-radius: 3px;
@@ -98,7 +101,9 @@ html, body {
 
 <div id="map"></div>
 
-<div class="info" id="info">Seleccione una comuna</div>
+<div class="info" id="info">
+  Seleccione una comuna
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -109,7 +114,6 @@ html, body {
 
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
-const ZOOM_MOSTRAR_LABELS = 12;
 
 const COMUNAS_ACTIVAS = [
   "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
@@ -122,7 +126,6 @@ const COMUNAS_ACTIVAS = [
   "Santiago","Vitacura"
 ];
 
-/* 🎨 Colores pastel claros */
 const colores = [
   "#e6f2ff","#fcefe6","#eaf7ea","#fff3cd",
   "#f2e6ff","#e6fff9","#fde6ec","#f4f4f4"
@@ -134,6 +137,8 @@ const colores = [
 
 const map = L.map('map', {
   zoomControl: false,
+  dragging: true,
+  scrollWheelZoom: true,
   minZoom: ZOOM_INICIAL,
   maxZoom: 13
 }).setView([-33.45, -70.66], ZOOM_INICIAL);
@@ -147,10 +152,9 @@ map.setMaxBounds([
 
 let geojson;
 let capasPorComuna = {};
-let labels = [];
 
 /* ===============================
-   ESTILO COMUNAS
+   FUNCIONES MAPA
 ================================ */
 
 function estilo(feature) {
@@ -198,39 +202,54 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
       f.properties.NOM_COM || f.properties.COMUNA || ""
     ),
     style: estilo,
-    onEachFeature: (feature, layer) => {
-      const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
+    onEachFeature: function (feature, layer) {
+      const nombre =
+        feature.properties.NOM_COM ||
+        feature.properties.COMUNA ||
+        "";
+
       capasPorComuna[nombre] = layer;
 
-      const tooltip = layer.bindTooltip(nombre, {
-        permanent: true,
+      layer.bindTooltip(nombre, {
+        permanent: false,
         direction: "center",
         className: "label-comuna"
       });
 
-      labels.push(tooltip);
       layer.on("click", () => irAComuna(nombre));
     }
   }).addTo(map);
 
   map.fitBounds(geojson.getBounds());
-
-  actualizarLabels();
 });
 
 /* ===============================
-   MOSTRAR LABELS SEGÚN ZOOM
+   === AUTOPISTA AMÉRICO VESPUCIO ===
+   (OVERPASS – SOLO VESPUCIO)
 ================================ */
 
-function actualizarLabels() {
-  const mostrar = map.getZoom() >= ZOOM_MOSTRAR_LABELS;
-  labels.forEach(t => {
-    if (mostrar) t.openTooltip();
-    else t.closeTooltip();
-  });
-}
+fetch("https://overpass-api.de/api/interpreter", {
+  method: "POST",
+  body: `
+[out:json];
+way["name"~"Américo Vespucio"](area:3600062427);
+out geom;
+`
+})
+.then(r => r.json())
+.then(data => {
+  const coords = data.elements
+    .filter(e => e.type === "way")
+    .map(w => w.geometry.map(p => [p.lat, p.lon]));
 
-map.on("zoomend", actualizarLabels);
+  coords.forEach(linea => {
+    L.polyline(linea, {
+      color: "#c00000",
+      weight: 5,
+      opacity: 0.95
+    }).addTo(map);
+  });
+});
 
 /* ===============================
    BUSCADOR
@@ -247,15 +266,15 @@ input.addEventListener("input", () => {
   COMUNAS_ACTIVAS
     .filter(c => c.toLowerCase().includes(texto))
     .forEach(nombre => {
-      const d = document.createElement("div");
-      d.className = "dropdown-item";
-      d.textContent = nombre;
-      d.onclick = () => {
+      const div = document.createElement("div");
+      div.className = "dropdown-item";
+      div.textContent = nombre;
+      div.onclick = () => {
         input.value = nombre;
         dropdown.style.display = "none";
         irAComuna(nombre);
       };
-      dropdown.appendChild(d);
+      dropdown.appendChild(div);
     });
 
   dropdown.style.display = "block";
