@@ -81,30 +81,15 @@ html, body {
   z-index: 999;
 }
 
-/* Leyenda */
-.legend {
-  position: absolute;
-  top: 95px; /* debajo del buscador */
-  left: 15px;
-  background: white;
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-  font-size: 13px;
-  z-index: 999;
-}
-
-.legend-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.legend-color {
-  width: 30px;
-  height: 4px;
-  background: #c00000;
+/* Etiqueta comuna */
+.label-comuna {
+  font-size: 12px;
+  font-weight: bold;
+  color: #000;
+  background: rgba(255,255,255,0.85);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #999;
 }
 </style>
 </head>
@@ -115,13 +100,6 @@ html, body {
   <label>Buscar comuna</label>
   <input id="comuna-input" placeholder="Escriba una comuna">
   <div id="dropdown"></div>
-</div>
-
-<div class="legend">
-  <div class="legend-line">
-    <div class="legend-color"></div>
-    Autopista Américo Vespucio
-  </div>
 </div>
 
 <div id="map"></div>
@@ -153,8 +131,7 @@ const COMUNAS_ACTIVAS = [
 
 const colores = [
   "#cfeeee","#fff4cc","#e6def2","#f7d6d0","#dbe9f6",
-  "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee",
-  "#e9f3e3","#fff2cc"
+  "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee"
 ];
 
 /* ===============================
@@ -163,21 +140,15 @@ const colores = [
 
 const map = L.map('map', {
   zoomControl: false,
-  dragging: true,
-  scrollWheelZoom: true,
   minZoom: ZOOM_INICIAL,
   maxZoom: 13
 }).setView([-33.45, -70.66], ZOOM_INICIAL);
 
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-map.setMaxBounds([
-  [-34.2, -71.6],
-  [-32.8, -69.9]
-]);
-
 let geojson;
 let capasPorComuna = {};
+let comunaSeleccionada = null;
 
 /* ===============================
    FUNCIONES
@@ -189,7 +160,7 @@ function estilo(feature) {
     fillColor: colores[index],
     weight: 0.8,
     color: "#999",
-    fillOpacity: 0.45
+    fillOpacity: 0.4
   };
 }
 
@@ -198,22 +169,29 @@ function destacar(layer) {
   layer.setStyle({
     weight: 3,
     color: "#000",
-    fillOpacity: 0.85
+    fillOpacity: 0.75
   });
 }
 
 function mostrarInfo(nombre) {
   document.getElementById("info").innerHTML =
-    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+    `<strong>${nombre}</strong><br>Flete base: $${FLETE_BASE.toLocaleString("es-CL")}`;
 }
 
 function irAComuna(nombre) {
   const layer = capasPorComuna[nombre];
   if (!layer) return;
 
+  if (comunaSeleccionada) {
+    comunaSeleccionada.closeTooltip();
+  }
+
+  comunaSeleccionada = layer;
+
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
   destacar(layer);
   mostrarInfo(nombre);
+  layer.openTooltip();
 }
 
 /* ===============================
@@ -238,12 +216,21 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
 
         capasPorComuna[nombre] = layer;
 
+        layer.bindTooltip(nombre, {
+          permanent: false,
+          direction: "center",
+          className: "label-comuna"
+        });
+
         layer.on({
           mouseover: () => {
-            destacar(layer);
-            mostrarInfo(nombre);
+            layer.openTooltip();
           },
-          mouseout: () => geojson.resetStyle(),
+          mouseout: () => {
+            if (layer !== comunaSeleccionada) {
+              layer.closeTooltip();
+            }
+          },
           click: () => irAComuna(nombre)
         });
       }
@@ -266,7 +253,6 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
           }
         }).addTo(map);
       });
-
   });
 
 /* ===============================
