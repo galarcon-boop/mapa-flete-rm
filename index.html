@@ -47,7 +47,7 @@ html, body {
   height: 30px;
   padding: 4px 6px;
   font-size: 14px;
-  box-sizing: border-box; /* 🔴 FIX */
+  box-sizing: border-box;
 }
 
 #dropdown {
@@ -63,6 +63,7 @@ html, body {
 .dropdown-item {
   padding: 6px;
   cursor: pointer;
+  font-size: 14px;
 }
 
 .dropdown-item:hover {
@@ -80,20 +81,21 @@ html, body {
   background: white;
   padding: 12px 16px;
   font-size: 15px;
+  border: 1px solid #ccc;
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.15);
   z-index: 999;
 }
 
-/* 🔴 TOOLTIP SIN RECUADRO */
-.label-comuna {
-  font-size: 12px;
-  font-weight: bold;
-  color: #333;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0;
+/* ===============================
+   ANIMACIÓN COMUNAS
+================================ */
+
+.comuna {
+  transition:
+    fill-opacity 0.25s ease,
+    stroke-width 0.25s ease,
+    stroke 0.25s ease;
 }
 </style>
 </head>
@@ -115,6 +117,10 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+/* ===============================
+   CONFIGURACIÓN
+================================ */
+
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
 
@@ -131,20 +137,36 @@ const COMUNAS_ACTIVAS = [
 
 const colores = [
   "#cfeeee","#fff4cc","#e6def2","#f7d6d0","#dbe9f6",
-  "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee"
+  "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee",
+  "#e9f3e3","#fff2cc"
 ];
+
+/* ===============================
+   MAPA
+================================ */
 
 const map = L.map('map', {
   zoomControl: false,
+  dragging: true,
+  scrollWheelZoom: true,
   minZoom: ZOOM_INICIAL,
   maxZoom: 13
 }).setView([-33.45, -70.66], ZOOM_INICIAL);
 
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+map.setMaxBounds([
+  [-34.2, -71.6],
+  [-32.8, -69.9]
+]);
+
 let geojson;
 let capasPorComuna = {};
 let comunaSeleccionada = null;
+
+/* ===============================
+   FUNCIONES
+================================ */
 
 function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
@@ -152,39 +174,43 @@ function estilo(feature) {
     fillColor: colores[index],
     weight: 0.8,
     color: "#aaa",
-    fillOpacity: 0.4
+    fillOpacity: 0.4,
+    className: "comuna"
   };
 }
 
-function destacar(layer) {
-  geojson.resetStyle();
+function highlightHover(layer) {
+  if (layer === comunaSeleccionada) return;
   layer.setStyle({
-    weight: 2,
-    color: "#666",
-    fillOpacity: 0.65
+    fillOpacity: 0.6,
+    weight: 1.5
   });
 }
 
-function mostrarInfo(nombre) {
-  document.getElementById("info").innerHTML =
-    `<strong>${nombre}</strong><br>Flete base: $${FLETE_BASE.toLocaleString("es-CL")}`;
+function resetHover(layer) {
+  if (layer === comunaSeleccionada) return;
+  geojson.resetStyle(layer);
 }
 
-function irAComuna(nombre) {
-  const layer = capasPorComuna[nombre];
-  if (!layer) return;
-
-  if (comunaSeleccionada && comunaSeleccionada !== layer) {
-    comunaSeleccionada.closeTooltip();
-  }
-
+function seleccionar(layer, nombre) {
   comunaSeleccionada = layer;
+  geojson.resetStyle();
+
+  layer.setStyle({
+    fillOpacity: 0.85,
+    weight: 3,
+    color: "#000"
+  });
 
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
-  destacar(layer);
-  mostrarInfo(nombre);
-  layer.openTooltip();
+
+  document.getElementById("info").innerHTML =
+    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 }
+
+/* ===============================
+   CARGA COMUNAS
+================================ */
 
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
@@ -195,40 +221,47 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         f.properties.NOM_COM || f.properties.COMUNA || ""
       ),
       style: estilo,
-      onEachFeature: (feature, layer) => {
+      onEachFeature: function (feature, layer) {
 
-        const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
+        const nombre =
+          feature.properties.NOM_COM ||
+          feature.properties.COMUNA ||
+          "";
+
         capasPorComuna[nombre] = layer;
 
-        layer.bindTooltip(nombre, {
-          direction: "center",
-          className: "label-comuna"
-        });
-
         layer.on({
-          mouseover: () => layer.openTooltip(),
-          mouseout: () => {
-            if (layer !== comunaSeleccionada) layer.closeTooltip();
-          },
-          click: () => irAComuna(nombre)
+          mouseover: () => highlightHover(layer),
+          mouseout: () => resetHover(layer),
+          click: () => seleccionar(layer, nombre)
         });
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
 
+    /* ===============================
+       AUTOPISTA AMÉRICO VESPUCIO
+    ================================ */
+
     fetch("./data/americo_vespucio.geojson")
       .then(r => r.json())
-      .then(av => {
-        L.geoJSON(av, {
+      .then(avData => {
+        L.geoJSON(avData, {
           style: {
             color: "#c00000",
             weight: 4,
             opacity: 0.6
           }
-        }).addTo(map);
+        })
+        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
+        .addTo(map);
       });
   });
+
+/* ===============================
+   BUSCADOR
+================================ */
 
 const input = document.getElementById("comuna-input");
 const dropdown = document.getElementById("dropdown");
@@ -251,12 +284,18 @@ input.addEventListener("input", () => {
       div.onclick = () => {
         input.value = nombre;
         dropdown.style.display = "none";
-        irAComuna(nombre);
+        seleccionar(capasPorComuna[nombre], nombre);
       };
       dropdown.appendChild(div);
     });
 
   dropdown.style.display = "block";
+});
+
+document.addEventListener("click", e => {
+  if (!document.getElementById("search-box").contains(e.target)) {
+    dropdown.style.display = "none";
+  }
 });
 </script>
 
