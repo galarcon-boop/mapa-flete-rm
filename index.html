@@ -60,6 +60,7 @@ html, body {
 .dropdown-item {
   padding: 6px;
   cursor: pointer;
+  font-size: 14px;
 }
 
 .dropdown-item:hover {
@@ -84,9 +85,9 @@ html, body {
   font-size: 11px;
   font-weight: bold;
   color: #333;
-  background: rgba(255,255,255,0.7);
-  padding: 1px 3px;
-  border-radius: 3px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 </style>
 </head>
@@ -127,8 +128,9 @@ const COMUNAS_ACTIVAS = [
 ];
 
 const colores = [
-  "#e6f2ff","#fcefe6","#eaf7ea","#fff3cd",
-  "#f2e6ff","#e6fff9","#fde6ec","#f4f4f4"
+  "#8dd3c7","#ffffb3","#bebada","#fb8072","#80b1d3",
+  "#fdb462","#b3de69","#fccde5","#d9d9d9","#bc80bd",
+  "#ccebc5","#ffed6f"
 ];
 
 /* ===============================
@@ -154,7 +156,7 @@ let geojson;
 let capasPorComuna = {};
 
 /* ===============================
-   FUNCIONES MAPA
+   FUNCIONES
 ================================ */
 
 function estilo(feature) {
@@ -162,8 +164,8 @@ function estilo(feature) {
   return {
     fillColor: colores[index],
     weight: 1,
-    color: "#aaa",
-    fillOpacity: 0.7
+    color: "#555",
+    fillOpacity: 0.85
   };
 }
 
@@ -172,7 +174,7 @@ function destacar(layer) {
   layer.setStyle({
     weight: 3,
     color: "#000",
-    fillOpacity: 0.9
+    fillOpacity: 1
   });
 }
 
@@ -184,13 +186,14 @@ function mostrarInfo(nombre) {
 function irAComuna(nombre) {
   const layer = capasPorComuna[nombre];
   if (!layer) return;
+
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
   destacar(layer);
   mostrarInfo(nombre);
 }
 
 /* ===============================
-   CARGA COMUNAS
+   COMUNAS
 ================================ */
 
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
@@ -202,16 +205,14 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
       f.properties.NOM_COM || f.properties.COMUNA || ""
     ),
     style: estilo,
-    onEachFeature: function (feature, layer) {
-      const nombre =
-        feature.properties.NOM_COM ||
-        feature.properties.COMUNA ||
-        "";
+    onEachFeature: (feature, layer) => {
+
+      const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
 
       capasPorComuna[nombre] = layer;
 
       layer.bindTooltip(nombre, {
-        permanent: false,
+        permanent: true,
         direction: "center",
         className: "label-comuna"
       });
@@ -224,31 +225,34 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
 });
 
 /* ===============================
-   === AUTOPISTA AMÉRICO VESPUCIO ===
-   (OVERPASS – SOLO VESPUCIO)
+   AMÉRICO VESPUCIO (OVERPASS)
 ================================ */
 
 fetch("https://overpass-api.de/api/interpreter", {
   method: "POST",
+  headers: { "Content-Type": "text/plain" },
   body: `
-[out:json];
-way["name"~"Américo Vespucio"](area:3600062427);
+[out:json][timeout:25];
+(
+  way["name"="Autopista Américo Vespucio Norte"](-33.7,-70.9,-33.2,-70.4);
+  way["name"="Autopista Américo Vespucio Sur"](-33.7,-70.9,-33.2,-70.4);
+  way["name"="Autopista Américo Vespucio Oriente"](-33.7,-70.9,-33.2,-70.4);
+);
 out geom;
 `
 })
 .then(r => r.json())
 .then(data => {
-  const coords = data.elements
+  data.elements
     .filter(e => e.type === "way")
-    .map(w => w.geometry.map(p => [p.lat, p.lon]));
-
-  coords.forEach(linea => {
-    L.polyline(linea, {
-      color: "#c00000",
-      weight: 5,
-      opacity: 0.95
-    }).addTo(map);
-  });
+    .forEach(way => {
+      const latlngs = way.geometry.map(p => [p.lat, p.lon]);
+      L.polyline(latlngs, {
+        color: "#c00000",
+        weight: 6,
+        opacity: 0.95
+      }).addTo(map);
+    });
 });
 
 /* ===============================
@@ -259,9 +263,13 @@ const input = document.getElementById("comuna-input");
 const dropdown = document.getElementById("dropdown");
 
 input.addEventListener("input", () => {
-  dropdown.innerHTML = "";
   const texto = input.value.toLowerCase();
-  if (!texto) return dropdown.style.display = "none";
+  dropdown.innerHTML = "";
+
+  if (!texto) {
+    dropdown.style.display = "none";
+    return;
+  }
 
   COMUNAS_ACTIVAS
     .filter(c => c.toLowerCase().includes(texto))
@@ -278,6 +286,12 @@ input.addEventListener("input", () => {
     });
 
   dropdown.style.display = "block";
+});
+
+document.addEventListener("click", e => {
+  if (!document.getElementById("search-box").contains(e.target)) {
+    dropdown.style.display = "none";
+  }
 });
 </script>
 
