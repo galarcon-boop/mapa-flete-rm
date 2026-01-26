@@ -71,45 +71,6 @@ html, body {
 }
 
 /* ===============================
-   LEYENDA AUTOPISTA
-================================ */
-
-#leyenda-av {
-  margin-top: 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: #333;
-}
-
-.linea-av {
-  width: 24px;
-  height: 4px;
-  background: #c00000;
-  border-radius: 2px;
-}
-
-/* ===============================
-   TITULO COMUNA
-================================ */
-
-#titulo-comuna {
-  position: absolute;
-  top: 15px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: white;
-  padding: 8px 18px;
-  font-size: 18px;
-  font-weight: bold;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-  z-index: 900;
-  pointer-events: none;
-}
-
-/* ===============================
    INFO
 ================================ */
 
@@ -142,9 +103,24 @@ html, body {
 }
 
 @keyframes pulsoBorde {
-  0% { stroke-opacity: 1; stroke-width: 3; }
-  50% { stroke-opacity: 0.6; stroke-width: 5; }
-  100% { stroke-opacity: 1; stroke-width: 3; }
+  0% { stroke-width: 3; }
+  50% { stroke-width: 5; }
+  100% { stroke-width: 3; }
+}
+
+/* ===============================
+   LABEL COMUNA
+================================ */
+
+.leaflet-tooltip.comuna-label {
+  background: rgba(255,255,255,0.9);
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  font-weight: bold;
+  font-size: 14px;
+  color: #000;
+  padding: 4px 8px;
+  border-radius: 4px;
 }
 </style>
 </head>
@@ -155,14 +131,7 @@ html, body {
   <label>Buscar comuna</label>
   <input id="comuna-input" placeholder="Escriba una comuna">
   <div id="dropdown"></div>
-
-  <div id="leyenda-av">
-    <span class="linea-av"></span>
-    Autopista Américo Vespucio
-  </div>
 </div>
-
-<div id="titulo-comuna">—</div>
 
 <div id="map"></div>
 
@@ -179,7 +148,6 @@ html, body {
 
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
-const ORIGEN_PROVIDENCIA = [-33.4316, -70.6093];
 
 const COMUNAS_ACTIVAS = [
   "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
@@ -210,10 +178,15 @@ const map = L.map('map', {
 
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+map.setMaxBounds([
+  [-34.2, -71.6],
+  [-32.8, -69.9]
+]);
+
 let geojson;
 let capasPorComuna = {};
 let comunaSeleccionada = null;
-let lineaDespacho = null;
+let labelActivo = null;
 
 /* ===============================
    FUNCIONES
@@ -230,13 +203,13 @@ function estilo(feature) {
   };
 }
 
-function distanciaKm(a, b) {
-  return map.distance(a, b) / 1000;
-}
-
 function seleccionar(layer, nombre) {
   if (comunaSeleccionada) {
     comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
+  }
+
+  if (labelActivo) {
+    map.removeLayer(labelActivo);
   }
 
   comunaSeleccionada = layer;
@@ -250,25 +223,19 @@ function seleccionar(layer, nombre) {
 
   layer.getElement()?.classList.add("comuna-seleccionada");
 
-  const centro = layer.getBounds().getCenter();
-
-  if (lineaDespacho) map.removeLayer(lineaDespacho);
-
-  const km = distanciaKm(ORIGEN_PROVIDENCIA, centro).toFixed(1);
-
-  lineaDespacho = L.polyline(
-    [ORIGEN_PROVIDENCIA, centro],
-    { color: "#c00000", weight: 3, dashArray: "6,6" }
-  ).addTo(map);
-
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
 
   document.getElementById("info").innerHTML =
-    `<strong>${nombre}</strong><br>
-     Distancia desde Providencia: ${km} km<br>
-     Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 
-  document.getElementById("titulo-comuna").textContent = nombre;
+  labelActivo = L.tooltip({
+    permanent: true,
+    direction: "center",
+    className: "comuna-label"
+  })
+  .setContent(nombre)
+  .setLatLng(layer.getBounds().getCenter())
+  .addTo(map);
 }
 
 /* ===============================
@@ -284,31 +251,21 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         f.properties.NOM_COM || f.properties.COMUNA || ""
       ),
       style: estilo,
-      onEachFeature: (feature, layer) => {
-        const nombre =
-          feature.properties.NOM_COM ||
-          feature.properties.COMUNA || "";
-
+      onEachFeature: function (feature, layer) {
+        const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
         capasPorComuna[nombre] = layer;
-        layer.on({ click: () => seleccionar(layer, nombre) });
+        layer.on("click", () => seleccionar(layer, nombre));
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
 
-    /* ===============================
-       AUTOPISTA AMÉRICO VESPUCIO (RESTAURADA)
-    ================================ */
-
+    /* AUTOPISTA AMÉRICO VESPUCIO */
     fetch("./data/americo_vespucio.geojson")
       .then(r => r.json())
       .then(avData => {
         L.geoJSON(avData, {
-          style: {
-            color: "#c00000",
-            weight: 4,
-            opacity: 0.6
-          }
+          style: { color: "#c00000", weight: 4, opacity: 0.6 }
         })
         .bindTooltip("Autopista Américo Vespucio", { sticky: true })
         .addTo(map);
