@@ -142,18 +142,9 @@ html, body {
 }
 
 @keyframes pulsoBorde {
-  0% {
-    stroke-opacity: 1;
-    stroke-width: 3;
-  }
-  50% {
-    stroke-opacity: 0.6;
-    stroke-width: 5;
-  }
-  100% {
-    stroke-opacity: 1;
-    stroke-width: 3;
-  }
+  0% { stroke-opacity: 1; stroke-width: 3; }
+  50% { stroke-opacity: 0.6; stroke-width: 5; }
+  100% { stroke-opacity: 1; stroke-width: 3; }
 }
 </style>
 </head>
@@ -171,7 +162,6 @@ html, body {
   </div>
 </div>
 
-<!-- TITULO COMUNA -->
 <div id="titulo-comuna">—</div>
 
 <div id="map"></div>
@@ -189,6 +179,9 @@ html, body {
 
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
+
+// 📍 ORIGEN DESPACHOS
+const ORIGEN_PROVIDENCIA = [-33.4316, -70.6093];
 
 const COMUNAS_ACTIVAS = [
   "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
@@ -229,6 +222,7 @@ map.setMaxBounds([
 let geojson;
 let capasPorComuna = {};
 let comunaSeleccionada = null;
+let lineaDespacho = null;
 
 /* ===============================
    FUNCIONES
@@ -245,17 +239,8 @@ function estilo(feature) {
   };
 }
 
-function highlightHover(layer) {
-  if (layer === comunaSeleccionada) return;
-  layer.setStyle({
-    fillOpacity: 0.6,
-    weight: 1.5
-  });
-}
-
-function resetHover(layer) {
-  if (layer === comunaSeleccionada) return;
-  geojson.resetStyle(layer);
+function distanciaKm(coord1, coord2) {
+  return map.distance(coord1, coord2) / 1000;
 }
 
 function seleccionar(layer, nombre) {
@@ -274,12 +259,30 @@ function seleccionar(layer, nombre) {
 
   layer.getElement()?.classList.add("comuna-seleccionada");
 
+  const centroComuna = layer.getBounds().getCenter();
+
+  if (lineaDespacho) {
+    map.removeLayer(lineaDespacho);
+  }
+
+  const km = distanciaKm(ORIGEN_PROVIDENCIA, centroComuna).toFixed(1);
+
+  lineaDespacho = L.polyline(
+    [ORIGEN_PROVIDENCIA, centroComuna],
+    {
+      color: "#c00000",
+      weight: 3,
+      dashArray: "6,6"
+    }
+  ).addTo(map);
+
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
 
   document.getElementById("info").innerHTML =
-    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+    `<strong>${nombre}</strong><br>
+     Distancia desde Providencia: ${km} km<br>
+     Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 
-  // MOSTRAR NOMBRE COMUNA
   document.getElementById("titulo-comuna").textContent = nombre;
 }
 
@@ -306,28 +309,12 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         capasPorComuna[nombre] = layer;
 
         layer.on({
-          mouseover: () => highlightHover(layer),
-          mouseout: () => resetHover(layer),
           click: () => seleccionar(layer, nombre)
         });
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
-
-    fetch("./data/americo_vespucio.geojson")
-      .then(r => r.json())
-      .then(avData => {
-        L.geoJSON(avData, {
-          style: {
-            color: "#c00000",
-            weight: 4,
-            opacity: 0.6
-          }
-        })
-        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
-        .addTo(map);
-      });
   });
 
 /* ===============================
