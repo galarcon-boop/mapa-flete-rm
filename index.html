@@ -71,32 +71,6 @@ html, body {
 }
 
 /* ===============================
-   LEYENDA
-================================ */
-
-#legend {
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid #e0e0e0;
-  font-size: 13px;
-  color: #333;
-}
-
-.legend-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.legend-color {
-  width: 22px;
-  height: 4px;
-  background: #c00000;
-  border-radius: 2px;
-}
-
-/* ===============================
    INFO
 ================================ */
 
@@ -129,9 +103,18 @@ html, body {
 }
 
 @keyframes pulsoBorde {
-  0% { stroke-width: 3; }
-  50% { stroke-width: 5; }
-  100% { stroke-width: 3; }
+  0% {
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
+  50% {
+    stroke-opacity: 0.6;
+    stroke-width: 5;
+  }
+  100% {
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
 }
 </style>
 </head>
@@ -142,15 +125,6 @@ html, body {
   <label>Buscar comuna</label>
   <input id="comuna-input" placeholder="Escriba una comuna">
   <div id="dropdown"></div>
-
-  <!-- LEYENDA -->
-  <div id="legend">
-    <strong>Leyenda</strong>
-    <div class="legend-line">
-      <div class="legend-color"></div>
-      Autopista Américo Vespucio
-    </div>
-  </div>
 </div>
 
 <div id="map"></div>
@@ -162,6 +136,10 @@ html, body {
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+/* ===============================
+   CONFIGURACIÓN
+================================ */
+
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
 
@@ -182,8 +160,14 @@ const colores = [
   "#e9f3e3","#fff2cc"
 ];
 
+/* ===============================
+   MAPA
+================================ */
+
 const map = L.map('map', {
   zoomControl: false,
+  dragging: true,
+  scrollWheelZoom: true,
   minZoom: ZOOM_INICIAL,
   maxZoom: 13
 }).setView([-33.45, -70.66], ZOOM_INICIAL);
@@ -199,6 +183,10 @@ let geojson;
 let capasPorComuna = {};
 let comunaSeleccionada = null;
 
+/* ===============================
+   FUNCIONES
+================================ */
+
 function estilo(feature) {
   const index = feature.properties.OBJECTID % colores.length;
   return {
@@ -210,13 +198,26 @@ function estilo(feature) {
   };
 }
 
+function highlightHover(layer) {
+  if (layer === comunaSeleccionada) return;
+  layer.setStyle({
+    fillOpacity: 0.6,
+    weight: 1.5
+  });
+}
+
+function resetHover(layer) {
+  if (layer === comunaSeleccionada) return;
+  geojson.resetStyle(layer);
+}
+
 function seleccionar(layer, nombre) {
   if (comunaSeleccionada) {
     comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
-    geojson.resetStyle(comunaSeleccionada);
   }
 
   comunaSeleccionada = layer;
+  geojson.resetStyle();
 
   layer.setStyle({
     fillOpacity: 0.85,
@@ -232,17 +233,33 @@ function seleccionar(layer, nombre) {
     `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
 }
 
+/* ===============================
+   CARGA COMUNAS
+================================ */
+
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
   .then(r => r.json())
   .then(data => {
+
     geojson = L.geoJSON(data, {
-      filter: f => COMUNAS_ACTIVAS.includes(f.properties.NOM_COM || ""),
+      filter: f => COMUNAS_ACTIVAS.includes(
+        f.properties.NOM_COM || f.properties.COMUNA || ""
+      ),
       style: estilo,
-      onEachFeature: (feature, layer) => {
-        const nombre = feature.properties.NOM_COM;
+      onEachFeature: function (feature, layer) {
+
+        const nombre =
+          feature.properties.NOM_COM ||
+          feature.properties.COMUNA ||
+          "";
+
         capasPorComuna[nombre] = layer;
 
-        layer.on("click", () => seleccionar(layer, nombre));
+        layer.on({
+          mouseover: () => highlightHover(layer),
+          mouseout: () => resetHover(layer),
+          click: () => seleccionar(layer, nombre)
+        });
       }
     }).addTo(map);
 
@@ -257,9 +274,50 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
             weight: 4,
             opacity: 0.6
           }
-        }).addTo(map);
+        })
+        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
+        .addTo(map);
       });
   });
+
+/* ===============================
+   BUSCADOR
+================================ */
+
+const input = document.getElementById("comuna-input");
+const dropdown = document.getElementById("dropdown");
+
+input.addEventListener("input", () => {
+  const texto = input.value.toLowerCase();
+  dropdown.innerHTML = "";
+
+  if (!texto) {
+    dropdown.style.display = "none";
+    return;
+  }
+
+  COMUNAS_ACTIVAS
+    .filter(c => c.toLowerCase().includes(texto))
+    .forEach(nombre => {
+      const div = document.createElement("div");
+      div.className = "dropdown-item";
+      div.textContent = nombre;
+      div.onclick = () => {
+        input.value = nombre;
+        dropdown.style.display = "none";
+        seleccionar(capasPorComuna[nombre], nombre);
+      };
+      dropdown.appendChild(div);
+    });
+
+  dropdown.style.display = "block";
+});
+
+document.addEventListener("click", e => {
+  if (!document.getElementById("search-box").contains(e.target)) {
+    dropdown.style.display = "none";
+  }
+});
 </script>
 
 </body>
