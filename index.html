@@ -70,6 +70,26 @@ html, body {
   background: #f0f0f0;
 }
 
+/* ===== LEYENDA AUTOPISTA ===== */
+
+#leyenda {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#linea-vespucio {
+  width: 30px;
+  height: 4px;
+  background: #c00000;
+  opacity: 0.6;
+  border-radius: 2px;
+}
+
 /* ===============================
    INFO
 ================================ */
@@ -131,6 +151,12 @@ html, body {
   <label>Buscar comuna</label>
   <input id="comuna-input" placeholder="Escriba una comuna">
   <div id="dropdown"></div>
+
+  <!-- LEYENDA AUTOPISTA -->
+  <div id="leyenda">
+    <div id="linea-vespucio"></div>
+    <div>Autopista Américo Vespucio</div>
+  </div>
 </div>
 
 <div id="map"></div>
@@ -204,23 +230,13 @@ function estilo(feature) {
 }
 
 function seleccionar(layer, nombre) {
-  if (comunaSeleccionada) {
-    comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
-  }
-
-  if (labelActivo) {
-    map.removeLayer(labelActivo);
-  }
+  if (comunaSeleccionada) comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
+  if (labelActivo) map.removeLayer(labelActivo);
 
   comunaSeleccionada = layer;
   geojson.resetStyle();
 
-  layer.setStyle({
-    fillOpacity: 0.85,
-    weight: 3,
-    color: "#000"
-  });
-
+  layer.setStyle({ fillOpacity: 0.85, weight: 3, color: "#000" });
   layer.getElement()?.classList.add("comuna-seleccionada");
 
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
@@ -243,34 +259,31 @@ function seleccionar(layer, nombre) {
 ================================ */
 
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
-  .then(r => r.json())
-  .then(data => {
+.then(r => r.json())
+.then(data => {
 
-    geojson = L.geoJSON(data, {
-      filter: f => COMUNAS_ACTIVAS.includes(
-        f.properties.NOM_COM || f.properties.COMUNA || ""
-      ),
-      style: estilo,
-      onEachFeature: function (feature, layer) {
-        const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
-        capasPorComuna[nombre] = layer;
-        layer.on("click", () => seleccionar(layer, nombre));
-      }
-    }).addTo(map);
+  geojson = L.geoJSON(data, {
+    filter: f => COMUNAS_ACTIVAS.includes(f.properties.NOM_COM || f.properties.COMUNA || ""),
+    style: estilo,
+    onEachFeature: (f,l) => {
+      const nombre = f.properties.NOM_COM || f.properties.COMUNA;
+      capasPorComuna[nombre] = l;
+      l.on("click", () => seleccionar(l, nombre));
+    }
+  }).addTo(map);
 
-    map.fitBounds(geojson.getBounds());
+  map.fitBounds(geojson.getBounds());
 
-    /* AUTOPISTA AMÉRICO VESPUCIO */
-    fetch("./data/americo_vespucio.geojson")
-      .then(r => r.json())
-      .then(avData => {
-        L.geoJSON(avData, {
-          style: { color: "#c00000", weight: 4, opacity: 0.6 }
-        })
-        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
-        .addTo(map);
-      });
-  });
+  fetch("./data/americo_vespucio.geojson")
+    .then(r => r.json())
+    .then(avData => {
+      L.geoJSON(avData, {
+        style: { color:"#c00000", weight:4, opacity:0.6 }
+      })
+      .bindTooltip("Autopista Américo Vespucio", { sticky:true })
+      .addTo(map);
+    });
+});
 
 /* ===============================
    BUSCADOR
@@ -283,13 +296,9 @@ input.addEventListener("input", () => {
   const texto = input.value.toLowerCase();
   dropdown.innerHTML = "";
 
-  if (!texto) {
-    dropdown.style.display = "none";
-    return;
-  }
+  if (!texto) return dropdown.style.display = "none";
 
-  COMUNAS_ACTIVAS
-    .filter(c => c.toLowerCase().includes(texto))
+  COMUNAS_ACTIVAS.filter(c => c.toLowerCase().includes(texto))
     .forEach(nombre => {
       const div = document.createElement("div");
       div.className = "dropdown-item";
