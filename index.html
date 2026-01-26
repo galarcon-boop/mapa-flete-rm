@@ -88,7 +88,7 @@ html, body {
 }
 
 /* ===============================
-   ANIMACIÓN COMUNAS
+   COMUNAS + ANIMACIÓN
 ================================ */
 
 .comuna {
@@ -96,6 +96,25 @@ html, body {
     fill-opacity 0.25s ease,
     stroke-width 0.25s ease,
     stroke 0.25s ease;
+}
+
+.comuna-seleccionada {
+  animation: pulsoBorde 1.8s ease-in-out infinite;
+}
+
+@keyframes pulsoBorde {
+  0% {
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
+  50% {
+    stroke-opacity: 0.6;
+    stroke-width: 5;
+  }
+  100% {
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
 }
 </style>
 </head>
@@ -193,6 +212,10 @@ function resetHover(layer) {
 }
 
 function seleccionar(layer, nombre) {
+  if (comunaSeleccionada) {
+    comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
+  }
+
   comunaSeleccionada = layer;
   geojson.resetStyle();
 
@@ -201,6 +224,8 @@ function seleccionar(layer, nombre) {
     weight: 3,
     color: "#000"
   });
+
+  layer.getElement()?.classList.add("comuna-seleccionada");
 
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
 
@@ -239,10 +264,6 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
-
-    /* ===============================
-       AUTOPISTA AMÉRICO VESPUCIO
-    ================================ */
 
     fetch("./data/americo_vespucio.geojson")
       .then(r => r.json())
