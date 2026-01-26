@@ -179,8 +179,6 @@ html, body {
 
 const FLETE_BASE = 7000;
 const ZOOM_INICIAL = 10;
-
-// 📍 ORIGEN DESPACHOS
 const ORIGEN_PROVIDENCIA = [-33.4316, -70.6093];
 
 const COMUNAS_ACTIVAS = [
@@ -206,18 +204,11 @@ const colores = [
 
 const map = L.map('map', {
   zoomControl: false,
-  dragging: true,
-  scrollWheelZoom: true,
   minZoom: ZOOM_INICIAL,
   maxZoom: 13
 }).setView([-33.45, -70.66], ZOOM_INICIAL);
 
 L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-map.setMaxBounds([
-  [-34.2, -71.6],
-  [-32.8, -69.9]
-]);
 
 let geojson;
 let capasPorComuna = {};
@@ -239,8 +230,8 @@ function estilo(feature) {
   };
 }
 
-function distanciaKm(coord1, coord2) {
-  return map.distance(coord1, coord2) / 1000;
+function distanciaKm(a, b) {
+  return map.distance(a, b) / 1000;
 }
 
 function seleccionar(layer, nombre) {
@@ -259,21 +250,15 @@ function seleccionar(layer, nombre) {
 
   layer.getElement()?.classList.add("comuna-seleccionada");
 
-  const centroComuna = layer.getBounds().getCenter();
+  const centro = layer.getBounds().getCenter();
 
-  if (lineaDespacho) {
-    map.removeLayer(lineaDespacho);
-  }
+  if (lineaDespacho) map.removeLayer(lineaDespacho);
 
-  const km = distanciaKm(ORIGEN_PROVIDENCIA, centroComuna).toFixed(1);
+  const km = distanciaKm(ORIGEN_PROVIDENCIA, centro).toFixed(1);
 
   lineaDespacho = L.polyline(
-    [ORIGEN_PROVIDENCIA, centroComuna],
-    {
-      color: "#c00000",
-      weight: 3,
-      dashArray: "6,6"
-    }
+    [ORIGEN_PROVIDENCIA, centro],
+    { color: "#c00000", weight: 3, dashArray: "6,6" }
   ).addTo(map);
 
   map.fitBounds(layer.getBounds(), { maxZoom: 12 });
@@ -299,22 +284,35 @@ fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comuna
         f.properties.NOM_COM || f.properties.COMUNA || ""
       ),
       style: estilo,
-      onEachFeature: function (feature, layer) {
-
+      onEachFeature: (feature, layer) => {
         const nombre =
           feature.properties.NOM_COM ||
-          feature.properties.COMUNA ||
-          "";
+          feature.properties.COMUNA || "";
 
         capasPorComuna[nombre] = layer;
-
-        layer.on({
-          click: () => seleccionar(layer, nombre)
-        });
+        layer.on({ click: () => seleccionar(layer, nombre) });
       }
     }).addTo(map);
 
     map.fitBounds(geojson.getBounds());
+
+    /* ===============================
+       AUTOPISTA AMÉRICO VESPUCIO (RESTAURADA)
+    ================================ */
+
+    fetch("./data/americo_vespucio.geojson")
+      .then(r => r.json())
+      .then(avData => {
+        L.geoJSON(avData, {
+          style: {
+            color: "#c00000",
+            weight: 4,
+            opacity: 0.6
+          }
+        })
+        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
+        .addTo(map);
+      });
   });
 
 /* ===============================
