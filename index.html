@@ -1,182 +1,323 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <title>Mapa Comunas + Américo Vespucio</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Flete por Comuna – Región Metropolitana</title>
 
-  <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-    }
+<style>
+html, body {
+  margin: 0;
+  padding: 0;
+  background: white;
+  font-family: Arial, sans-serif;
+}
 
-    #controls {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 10px;
-      border-radius: 6px;
-      width: 260px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.25);
-    }
+#map {
+  width: 100vw;
+  height: 100vh;
+}
 
-    #comunaSearch {
-      width: 100%;
-      padding: 6px;
-      box-sizing: border-box;
-    }
+/* ===============================
+   BUSCADOR
+================================ */
 
-    #legend {
-      margin-top: 10px;
-      font-size: 13px;
-    }
+#search-box {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: white;
+  padding: 10px 12px;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 1000;
+  width: 230px;
+}
 
-    #map {
-      height: 100vh;
-      width: 100vw;
-    }
+#search-box label {
+  display: block;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 4px;
+}
 
-    /* Tooltip de comuna (nombre) */
-    .comuna-tooltip {
-      background: rgba(0,0,0,0.75);
-      color: white;
-      border: none;
-      border-radius: 4px;
-      padding: 4px 8px;
-      font-size: 12px;
-      box-shadow: none;
-    }
-  </style>
+#comuna-input {
+  width: 100%;
+  height: 30px;
+  padding: 4px 6px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+#dropdown {
+  margin-top: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-height: 160px;
+  overflow-y: auto;
+  display: none;
+  background: white;
+}
+
+.dropdown-item {
+  padding: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.dropdown-item:hover {
+  background: #f0f0f0;
+}
+
+/* ===============================
+   INFO
+================================ */
+
+.info {
+  position: absolute;
+  bottom: 20px;
+  left: 15px;
+  background: white;
+  padding: 12px 16px;
+  font-size: 15px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  z-index: 999;
+}
+
+/* ===============================
+   COMUNAS + ANIMACIÓN
+================================ */
+
+.comuna {
+  transition:
+    fill-opacity 0.25s ease,
+    stroke-width 0.25s ease,
+    stroke 0.25s ease;
+}
+
+.comuna-seleccionada {
+  animation: pulsoBorde 1.8s ease-in-out infinite;
+}
+
+@keyframes pulsoBorde {
+  0% {
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
+  50% {
+    stroke-opacity: 0.6;
+    stroke-width: 5;
+  }
+  100% {
+    stroke-opacity: 1;
+    stroke-width: 3;
+  }
+}
+</style>
 </head>
+
 <body>
 
-<div id="controls">
-  <input type="text" id="comunaSearch" placeholder="Buscar comuna..." list="comunasList">
-  <datalist id="comunasList"></datalist>
-
-  <div id="legend">
-    <b>Leyenda</b><br>
-    <span style="color:#d7191c;">━</span> Autopista Américo Vespucio
-  </div>
+<div id="search-box">
+  <label>Buscar comuna</label>
+  <input id="comuna-input" placeholder="Escriba una comuna">
+  <div id="dropdown"></div>
 </div>
 
 <div id="map"></div>
 
-<!-- Leaflet -->
+<div class="info" id="info">
+  Seleccione una comuna
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
-  const map = L.map('map').setView([-33.45, -70.65], 11);
+/* ===============================
+   CONFIGURACIÓN
+================================ */
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap'
-  }).addTo(map);
+const FLETE_BASE = 7000;
+const ZOOM_INICIAL = 10;
 
-  let comunasLayer;
-  let comunaIndex = {};
+const COMUNAS_ACTIVAS = [
+  "Cerrillos","Cerro Navia","Conchalí","El Bosque","Estación Central",
+  "Huechuraba","Independencia","La Cisterna","La Florida","La Granja",
+  "La Pintana","La Reina","Lampa","Las Condes","Lo Barnechea",
+  "Lo Espejo","Lo Prado","Macul","Maipú","Ñuñoa",
+  "Pedro Aguirre Cerda","Peñalolén","Providencia","Pudahuel",
+  "Puente Alto","Quilicura","Quinta Normal","Recoleta","Renca",
+  "San Bernardo","San Joaquín","San Miguel","San Ramón",
+  "Santiago","Vitacura"
+];
 
-  /* ===== ESTILOS ===== */
+const colores = [
+  "#cfeeee","#fff4cc","#e6def2","#f7d6d0","#dbe9f6",
+  "#fde5cc","#e6f2d8","#f6dde8","#eeeeee","#e6d9ee",
+  "#e9f3e3","#fff2cc"
+];
 
-  function comunaStyle() {
-    return {
-      color: '#999',
-      weight: 1,
-      fillColor: '#dddddd',
-      fillOpacity: 0.4
-    };
+/* ===============================
+   MAPA
+================================ */
+
+const map = L.map('map', {
+  zoomControl: false,
+  dragging: true,
+  scrollWheelZoom: true,
+  minZoom: ZOOM_INICIAL,
+  maxZoom: 13
+}).setView([-33.45, -70.66], ZOOM_INICIAL);
+
+L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+map.setMaxBounds([
+  [-34.2, -71.6],
+  [-32.8, -69.9]
+]);
+
+let geojson;
+let capasPorComuna = {};
+let comunaSeleccionada = null;
+
+/* ===============================
+   FUNCIONES
+================================ */
+
+function estilo(feature) {
+  const index = feature.properties.OBJECTID % colores.length;
+  return {
+    fillColor: colores[index],
+    weight: 0.8,
+    color: "#aaa",
+    fillOpacity: 0.4,
+    className: "comuna"
+  };
+}
+
+function highlightHover(layer) {
+  if (layer === comunaSeleccionada) return;
+  layer.setStyle({
+    fillOpacity: 0.6,
+    weight: 1.5
+  });
+}
+
+function resetHover(layer) {
+  if (layer === comunaSeleccionada) return;
+  geojson.resetStyle(layer);
+}
+
+function seleccionar(layer, nombre) {
+  if (comunaSeleccionada) {
+    comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
   }
 
-  function comunaHighlightStyle() {
-    return {
-      color: '#333',
-      weight: 2,
-      fillColor: '#bbbbbb',
-      fillOpacity: 0.6
-    };
-  }
+  comunaSeleccionada = layer;
+  geojson.resetStyle();
 
-  /* ===== TOOLTIP ===== */
-
-  function bindComunaInteractions(feature, layer) {
-    const nombre = feature.properties.NOM_COM;
-
-    layer.bindTooltip(nombre, {
-      direction: 'center',
-      className: 'comuna-tooltip',
-      sticky: true,
-      opacity: 1
-    });
-
-    layer.on({
-      mouseover: (e) => {
-        e.target.setStyle(comunaHighlightStyle());
-        e.target.openTooltip();
-      },
-      mouseout: (e) => {
-        comunasLayer.resetStyle(e.target);
-        e.target.closeTooltip();
-      }
-    });
-
-    comunaIndex[nombre.toLowerCase()] = layer;
-
-    const option = document.createElement("option");
-    option.value = nombre;
-    document.getElementById("comunasList").appendChild(option);
-  }
-
-  /* ===== CARGA COMUNAS ===== */
-
-  fetch('comunas_rm.geojson')
-    .then(res => res.json())
-    .then(data => {
-      comunasLayer = L.geoJSON(data, {
-        style: comunaStyle,
-        onEachFeature: bindComunaInteractions
-      }).addTo(map);
-    });
-
-  /* ===== BUSCADOR ===== */
-
-  document.getElementById("comunaSearch").addEventListener("change", function () {
-    const value = this.value.toLowerCase();
-
-    if (comunaIndex[value]) {
-      const layer = comunaIndex[value];
-      map.fitBounds(layer.getBounds(), { padding: [30, 30] });
-
-      layer.setStyle(comunaHighlightStyle());
-      layer.openTooltip();
-
-      setTimeout(() => {
-        comunasLayer.resetStyle(layer);
-        layer.closeTooltip();
-      }, 2000);
-    }
+  layer.setStyle({
+    fillOpacity: 0.85,
+    weight: 3,
+    color: "#000"
   });
 
-  /* ===== AUTOPISTA AMÉRICO VESPUCIO ===== */
+  layer.getElement()?.classList.add("comuna-seleccionada");
 
-  fetch('americo_vespucio.geojson')
-    .then(res => res.json())
-    .then(data => {
-      L.geoJSON(data, {
-        style: {
-          color: '#d7191c',
-          weight: 4
-        }
-      }).addTo(map);
+  map.fitBounds(layer.getBounds(), { maxZoom: 12 });
+
+  document.getElementById("info").innerHTML =
+    `<strong>${nombre}</strong><br>Flete: $${FLETE_BASE.toLocaleString("es-CL")}`;
+}
+
+/* ===============================
+   CARGA COMUNAS
+================================ */
+
+fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
+  .then(r => r.json())
+  .then(data => {
+
+    geojson = L.geoJSON(data, {
+      filter: f => COMUNAS_ACTIVAS.includes(
+        f.properties.NOM_COM || f.properties.COMUNA || ""
+      ),
+      style: estilo,
+      onEachFeature: function (feature, layer) {
+
+        const nombre =
+          feature.properties.NOM_COM ||
+          feature.properties.COMUNA ||
+          "";
+
+        capasPorComuna[nombre] = layer;
+
+        layer.on({
+          mouseover: () => highlightHover(layer),
+          mouseout: () => resetHover(layer),
+          click: () => seleccionar(layer, nombre)
+        });
+      }
+    }).addTo(map);
+
+    map.fitBounds(geojson.getBounds());
+
+    fetch("./data/americo_vespucio.geojson")
+      .then(r => r.json())
+      .then(avData => {
+        L.geoJSON(avData, {
+          style: {
+            color: "#c00000",
+            weight: 4,
+            opacity: 0.6
+          }
+        })
+        .bindTooltip("Autopista Américo Vespucio", { sticky: true })
+        .addTo(map);
+      });
+  });
+
+/* ===============================
+   BUSCADOR
+================================ */
+
+const input = document.getElementById("comuna-input");
+const dropdown = document.getElementById("dropdown");
+
+input.addEventListener("input", () => {
+  const texto = input.value.toLowerCase();
+  dropdown.innerHTML = "";
+
+  if (!texto) {
+    dropdown.style.display = "none";
+    return;
+  }
+
+  COMUNAS_ACTIVAS
+    .filter(c => c.toLowerCase().includes(texto))
+    .forEach(nombre => {
+      const div = document.createElement("div");
+      div.className = "dropdown-item";
+      div.textContent = nombre;
+      div.onclick = () => {
+        input.value = nombre;
+        dropdown.style.display = "none";
+        seleccionar(capasPorComuna[nombre], nombre);
+      };
+      dropdown.appendChild(div);
     });
 
+  dropdown.style.display = "block";
+});
+
+document.addEventListener("click", e => {
+  if (!document.getElementById("search-box").contains(e.target)) {
+    dropdown.style.display = "none";
+  }
+});
 </script>
 
 </body>
