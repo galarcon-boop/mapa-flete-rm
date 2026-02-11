@@ -110,12 +110,20 @@ html, body {
   bottom: 20px;
   left: 15px;
   background: white;
-  padding: 12px 16px;
-  font-size: 15px;
+  padding: 14px 18px;
+  font-size: 14px;
   border: 1px solid #ccc;
-  border-radius: 6px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.2);
   z-index: 999;
+  min-width: 260px;
+}
+
+.valor-flete {
+  font-size: 22px;
+  font-weight: bold;
+  color: #000;
+  margin-top: 6px;
 }
 
 /* ===============================
@@ -182,7 +190,7 @@ html, body {
     </div>
 
     <div id="nota-leyenda">
-      Valores calculados según distancia estimada desde Providencia.
+      Valores calculados según distancia estimada ida y vuelta desde Providencia.
     </div>
   </div>
 </div>
@@ -198,169 +206,195 @@ html, body {
 <script>
 
 /* ===============================
-   CATEGORÍAS
+   DISTANCIAS REALES (IDA Y VUELTA)
 ================================ */
 
-const COMUNAS_A = [
-  "Providencia","Ñuñoa","Recoleta","Macul","Santiago",
-  "Independencia","Estación Central","Peñalolén",
-  "Las Condes","Huechuraba","La Reina",
-  "Vitacura","Quinta Normal","Conchalí"
-];
+const DISTANCIAS = {
+  "Providencia": 1,
+  "Ñuñoa": 6.8,
+  "Recoleta": 12.6,
+  "Macul": 13.2,
+  "Santiago": 13.4,
+  "Independencia": 13.8,
+  "Estación Central": 15.3,
+  "Peñalolén": 17.2,
+  "Las Condes": 17.2,
+  "Huechuraba": 17.4,
+  "La Reina": 18,
+  "Vitacura": 19.2,
+  "Quinta Normal": 21.6,
+  "Conchalí": 23.8,
+  "Renca": 25,
+  "La Florida": 25.4,
+  "San Miguel": 26.8,
+  "Lo Prado": 29.4,
+  "Pedro Aguirre Cerda": 29.8,
+  "San Joaquín": 31,
+  "Cerro Navia": 31.6,
+  "La Granja": 32.6,
+  "Quilicura": 34.6,
+  "Lo Espejo": 35.8,
+  "Lo Barnechea": 35.8,
+  "La Cisterna": 36.4,
+  "San Ramón": 40.1,
+  "Cerrillos": 41.8,
+  "El Bosque": 44.2,
+  "La Pintana": 44.8,
+  "Pudahuel": 45.6,
+  "Maipú": 51.8,
+  "Puente Alto": 53,
+  "San Bernardo": 53.6,
+  "Lampa": 73
+};
 
-const COMUNAS_B = [
-  "Renca","La Florida","San Miguel","Lo Prado",
-  "Pedro Aguirre Cerda","San Joaquín",
-  "Cerro Navia","La Granja",
-  "Quilicura","Lo Espejo"
-];
+/* ===============================
+   ZONAS
+================================ */
 
-const COMUNAS_C = [
-  "Lo Barnechea","La Cisterna","Cerrillos","El Bosque",
-  "San Ramón","La Pintana","Pudahuel","Maipú",
-  "Puente Alto","San Bernardo","Lampa"
-];
+const COMUNAS_A = ["Providencia","Ñuñoa","Recoleta","Macul","Santiago","Independencia","Estación Central","Peñalolén","Las Condes","Huechuraba","La Reina","Vitacura","Quinta Normal","Conchalí"];
 
-function obtenerFlete(comuna) {
-  if (COMUNAS_A.includes(comuna)) return 5000;
-  if (COMUNAS_B.includes(comuna)) return 8000;
-  if (COMUNAS_C.includes(comuna)) return 10000;
+const COMUNAS_B = ["Renca","La Florida","San Miguel","Lo Prado","Pedro Aguirre Cerda","San Joaquín","Cerro Navia","La Granja","Quilicura","Lo Espejo","La Cisterna","San Ramón"];
+
+const COMUNAS_C = ["Lo Barnechea","Cerrillos","El Bosque","La Pintana","Pudahuel","Maipú","Puente Alto","San Bernardo","Lampa"];
+
+function obtenerZona(comuna){
+  if (COMUNAS_A.includes(comuna)) return "A";
+  if (COMUNAS_B.includes(comuna)) return "B";
+  if (COMUNAS_C.includes(comuna)) return "C";
+  return "-";
+}
+
+function obtenerFlete(comuna){
+  const zona = obtenerZona(comuna);
+  if (zona === "A") return 5000;
+  if (zona === "B") return 8000;
+  if (zona === "C") return 10000;
   return 0;
 }
 
-function obtenerColor(comuna) {
-  if (COMUNAS_A.includes(comuna)) return "#4CAF50";
-  if (COMUNAS_B.includes(comuna)) return "#FFC107";
-  if (COMUNAS_C.includes(comuna)) return "#F44336";
-  return "#cccccc";
+function obtenerColor(comuna){
+  const zona = obtenerZona(comuna);
+  if (zona === "A") return "#4CAF50";
+  if (zona === "B") return "#FFC107";
+  if (zona === "C") return "#F44336";
+  return "#ccc";
 }
 
 /* ===============================
    MAPA
 ================================ */
 
-const map = L.map('map', {
-  zoomControl: false,
-  minZoom: 10,
-  maxZoom: 13
-}).setView([-33.45, -70.66], 10);
+const map = L.map('map', { zoomControl:false, minZoom:10, maxZoom:13 })
+.setView([-33.45,-70.66],10);
 
-L.control.zoom({ position: 'bottomright' }).addTo(map);
+L.control.zoom({position:'bottomright'}).addTo(map);
 
-map.setMaxBounds([
-  [-34.2, -71.6],
-  [-32.8, -69.9]
-]);
+map.setMaxBounds([[-34.2,-71.6],[-32.8,-69.9]]);
 
 let geojson;
 let capasPorComuna = {};
 let comunaSeleccionada = null;
 let labelActivo = null;
 
-function estilo(feature) {
+function estilo(feature){
   const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
   return {
     fillColor: obtenerColor(nombre),
-    weight: 0.8,
-    color: "#999",
-    fillOpacity: 0.55,
-    className: "comuna"
+    weight:0.8,
+    color:"#999",
+    fillOpacity:0.55,
+    className:"comuna"
   };
 }
 
-function seleccionar(layer, nombre) {
-  if (comunaSeleccionada) comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
-  if (labelActivo) map.removeLayer(labelActivo);
+function seleccionar(layer,nombre){
+
+  if(comunaSeleccionada) comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
+  if(labelActivo) map.removeLayer(labelActivo);
 
   comunaSeleccionada = layer;
   geojson.resetStyle();
 
-  layer.setStyle({
-    fillOpacity: 0.9,
-    weight: 3,
-    color: "#000"
-  });
-
+  layer.setStyle({ fillOpacity:0.9, weight:3, color:"#000" });
   layer.getElement()?.classList.add("comuna-seleccionada");
 
-  map.fitBounds(layer.getBounds(), { maxZoom: 12 });
+  map.fitBounds(layer.getBounds(),{maxZoom:12});
 
+  const distancia = DISTANCIAS[nombre] || 0;
+  const zona = obtenerZona(nombre);
   const flete = obtenerFlete(nombre);
 
-  document.getElementById("info").innerHTML =
-    `<strong>${nombre}</strong><br>Flete: $${flete.toLocaleString("es-CL")}`;
+  document.getElementById("info").innerHTML = `
+    <strong style="font-size:16px;">${nombre}</strong><br>
+    Distancia ida y vuelta: <strong>${distancia} km</strong><br>
+    Zona: <strong>${zona}</strong>
+    <div class="valor-flete">$${flete.toLocaleString("es-CL")}</div>
+  `;
 
-  labelActivo = L.tooltip({
-    permanent: true,
-    direction: "center",
-    className: "comuna-label"
-  })
+  labelActivo = L.tooltip({ permanent:true, direction:"center", className:"comuna-label"})
   .setContent(nombre)
   .setLatLng(layer.getBounds().getCenter())
   .addTo(map);
 }
 
-const COMUNAS_ACTIVAS = [...COMUNAS_A, ...COMUNAS_B, ...COMUNAS_C];
+const COMUNAS_ACTIVAS = Object.keys(DISTANCIAS);
 
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
-.then(r => r.json())
-.then(data => {
+.then(r=>r.json())
+.then(data=>{
 
-  geojson = L.geoJSON(data, {
-    filter: f => COMUNAS_ACTIVAS.includes(f.properties.NOM_COM || f.properties.COMUNA || ""),
-    style: estilo,
-    onEachFeature: (f,l) => {
-      const nombre = f.properties.NOM_COM || f.properties.COMUNA;
-      capasPorComuna[nombre] = l;
-      l.on("click", () => seleccionar(l, nombre));
+  geojson = L.geoJSON(data,{
+    filter:f=>COMUNAS_ACTIVAS.includes(f.properties.NOM_COM || f.properties.COMUNA || ""),
+    style:estilo,
+    onEachFeature:(f,l)=>{
+      const nombre=f.properties.NOM_COM || f.properties.COMUNA;
+      capasPorComuna[nombre]=l;
+      l.on("click",()=>seleccionar(l,nombre));
     }
   }).addTo(map);
 
   map.fitBounds(geojson.getBounds());
 
   fetch("./data/americo_vespucio.geojson")
-    .then(r => r.json())
-    .then(avData => {
-      L.geoJSON(avData, {
-        style: { color:"#c00000", weight:4, opacity:0.6 }
-      })
-      .bindTooltip("Autopista Américo Vespucio", { sticky:true })
-      .addTo(map);
-    });
+  .then(r=>r.json())
+  .then(avData=>{
+    L.geoJSON(avData,{style:{color:"#c00000",weight:4,opacity:0.6}})
+    .bindTooltip("Autopista Américo Vespucio",{sticky:true})
+    .addTo(map);
+  });
 });
 
 /* ===============================
    BUSCADOR
 ================================ */
 
-const input = document.getElementById("comuna-input");
-const dropdown = document.getElementById("dropdown");
+const input=document.getElementById("comuna-input");
+const dropdown=document.getElementById("dropdown");
 
-input.addEventListener("input", () => {
-  const texto = input.value.toLowerCase();
-  dropdown.innerHTML = "";
+input.addEventListener("input",()=>{
+  const texto=input.value.toLowerCase();
+  dropdown.innerHTML="";
+  if(!texto) return dropdown.style.display="none";
 
-  if (!texto) return dropdown.style.display = "none";
+  COMUNAS_ACTIVAS.filter(c=>c.toLowerCase().includes(texto))
+  .forEach(nombre=>{
+    const div=document.createElement("div");
+    div.className="dropdown-item";
+    div.textContent=nombre;
+    div.onclick=()=>{
+      input.value=nombre;
+      dropdown.style.display="none";
+      seleccionar(capasPorComuna[nombre],nombre);
+    };
+    dropdown.appendChild(div);
+  });
 
-  COMUNAS_ACTIVAS.filter(c => c.toLowerCase().includes(texto))
-    .forEach(nombre => {
-      const div = document.createElement("div");
-      div.className = "dropdown-item";
-      div.textContent = nombre;
-      div.onclick = () => {
-        input.value = nombre;
-        dropdown.style.display = "none";
-        seleccionar(capasPorComuna[nombre], nombre);
-      };
-      dropdown.appendChild(div);
-    });
-
-  dropdown.style.display = "block";
+  dropdown.style.display="block";
 });
 
-document.addEventListener("click", e => {
-  if (!document.getElementById("search-box").contains(e.target)) {
-    dropdown.style.display = "none";
+document.addEventListener("click",e=>{
+  if(!document.getElementById("search-box").contains(e.target)){
+    dropdown.style.display="none";
   }
 });
 </script>
