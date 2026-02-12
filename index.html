@@ -62,13 +62,13 @@
 /* HUMO */
 .humo {
   position: absolute;
-  bottom: 16px;
-  width: 10px;
-  height: 10px;
-  background: rgba(90,90,90,0.85);
+  bottom: 15px;
+  width: 14px;
+  height: 14px;
+  background: rgba(120,120,120,0.8);
   border-radius: 50%;
   opacity: 0;
-  filter: blur(2px);
+  filter: blur(3px);
 }
 /* humo lado izquierdo */
 .humo-izq {
@@ -314,11 +314,9 @@
       <div id="linea-central"></div>
     </div>
 
-    <div id="camion-wrapper">
-      <div id="camion">🚚</div>
-      <div class="humo"></div>
-    </div>
-  </div>
+    <div class="camion-wrapper derecha" id="camion">
+  <div class="humo"></div>
+  <div class="camion">🚚</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
