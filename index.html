@@ -7,14 +7,14 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
 <style>
-  /* ===============================
-   CAMIÓN + CARRETERA PRO
+/* ===============================
+   CAMIÓN PRO REALISTA
 ================================ */
 
 #camion-container {
   position: relative;
   width: 100%;
-  height: 60px;
+  height: 70px;
   margin-top: 14px;
   overflow: hidden;
   display: none;
@@ -24,7 +24,7 @@
 
 #carretera {
   position: absolute;
-  bottom: 10px;
+  bottom: 15px;
   width: 100%;
   height: 8px;
   background: #444;
@@ -32,8 +32,7 @@
   overflow: hidden;
 }
 
-#carretera::after {
-  content: "";
+#linea-central {
   position: absolute;
   top: 3px;
   left: 0;
@@ -42,84 +41,83 @@
   background: repeating-linear-gradient(
     to right,
     white 0px,
-    white 16px,
-    transparent 16px,
-    transparent 32px
+    white 18px,
+    transparent 18px,
+    transparent 36px
   );
-  animation: moverCarretera 0.6s linear infinite;
-}
-
-@keyframes moverCarretera {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-32px); }
 }
 
 /* CAMIÓN */
 
-#camion {
+#camion-wrapper {
   position: absolute;
+  bottom: 25px;
+  left: -50px;
+}
+
+#camion {
   font-size: 28px;
-  bottom: 20px;
-  left: -40px;
-}
-
-.camion-moviendo {
-  animation: moverIdaVuelta 3s linear forwards,
-             vibrar 0.15s infinite;
-}
-
-@keyframes moverIdaVuelta {
-  0%   { left: -40px; transform: scaleX(1); }
-  45%  { left: 100%; transform: scaleX(1); }
-  50%  { left: 100%; transform: scaleX(-1); }
-  95%  { left: -40px; transform: scaleX(-1); }
-  100% { left: -40px; transform: scaleX(1); }
-}
-
-@keyframes vibrar {
-  0%   { translate: 0 0; }
-  25%  { translate: 0.5px -0.5px; }
-  50%  { translate: -0.5px 0.5px; }
-  75%  { translate: 0.5px 0.5px; }
-  100% { translate: 0 0; }
 }
 
 /* HUMO */
 
 .humo {
   position: absolute;
-  bottom: 28px;
+  bottom: 15px;
   left: -10px;
   width: 8px;
   height: 8px;
-  background: rgba(180,180,180,0.6);
+  background: rgba(180,180,180,0.7);
   border-radius: 50%;
   opacity: 0;
+}
+
+/* ANIMACIONES */
+
+.camion-moviendo #camion-wrapper {
+  animation: moverIdaVuelta 3s linear forwards;
+}
+
+.camion-moviendo #camion {
+  animation: vibrar 0.15s infinite;
 }
 
 .camion-moviendo .humo {
   animation: salirHumo 1s ease-out infinite;
 }
 
+.camion-moviendo #linea-central {
+  animation: carreteraIdaVuelta 3s linear forwards;
+}
+
+@keyframes moverIdaVuelta {
+  0%   { left: -50px; transform: scaleX(1); }
+  45%  { left: 100%; transform: scaleX(1); }
+  50%  { left: 100%; transform: scaleX(-1); }
+  95%  { left: -50px; transform: scaleX(-1); }
+  100% { left: -50px; transform: scaleX(1); }
+}
+
+@keyframes carreteraIdaVuelta {
+  0%   { transform: translateX(0); }
+  45%  { transform: translateX(-60px); }
+  50%  { transform: translateX(-60px); }
+  95%  { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes vibrar {
+  0%   { transform: translate(0,0); }
+  50%  { transform: translate(0.5px,-0.5px); }
+  100% { transform: translate(0,0); }
+}
+
 @keyframes salirHumo {
   0%   { opacity: 0.7; transform: translate(0,0) scale(0.5); }
-  50%  { opacity: 0.5; transform: translate(-10px,-10px) scale(1); }
+  50%  { opacity: 0.4; transform: translate(-10px,-10px) scale(1); }
   100% { opacity: 0; transform: translate(-20px,-20px) scale(1.4); }
-
 }
 
-
-html, body {
-  margin: 0;
-  padding: 0;
-  background: white;
-  font-family: Arial, sans-serif;
-}
-
-#map {
-  width: 100vw;
-  height: 100vh;
-}
 
 /* ===============================
    BUSCADOR
@@ -304,14 +302,18 @@ html, body {
     Seleccione una comuna
   </div>
 
-  <div id="camion-container">
-    <div id="carretera"></div>
-    <div id="camion">
-  🚚
-  <div class="humo"></div>
+ <div id="camion-container">
+
+  <div id="carretera">
+    <div id="linea-central"></div>
+  </div>
+
+  <div id="camion-wrapper">
+    <div id="camion">🚚</div>
+    <div class="humo"></div>
+  </div>
+
 </div>
-
-
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
