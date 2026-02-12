@@ -5,6 +5,7 @@
 <title>Flete por Comuna – Región Metropolitana</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
 <style>
 html, body {
@@ -19,10 +20,7 @@ html, body {
   height: 100vh;
 }
 
-/* ===============================
-   BUSCADOR
-================================ */
-
+/* BUSCADOR */
 #search-box {
   position: absolute;
   top: 15px;
@@ -70,41 +68,7 @@ html, body {
   background: #f0f0f0;
 }
 
-/* ===============================
-   LEYENDA
-================================ */
-
-#leyenda {
-  margin-top: 10px;
-  padding-top: 8px;
-  border-top: 1px solid #e0e0e0;
-  font-size: 12.5px;
-}
-
-.leyenda-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.color-box {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-}
-
-#nota-leyenda {
-  margin-top: 6px;
-  font-size: 11px;
-  color: #555;
-  line-height: 1.3em;
-}
-
-/* ===============================
-   INFO
-================================ */
-
+/* INFO */
 .info {
   position: absolute;
   bottom: 20px;
@@ -126,10 +90,6 @@ html, body {
   margin-top: 6px;
 }
 
-/* ===============================
-   COMUNAS + ANIMACIÓN
-================================ */
-
 .comuna {
   transition: fill-opacity 0.25s ease, stroke-width 0.25s ease, stroke 0.25s ease;
 }
@@ -143,21 +103,6 @@ html, body {
   50% { stroke-width: 5; }
   100% { stroke-width: 3; }
 }
-
-/* ===============================
-   LABEL COMUNA
-================================ */
-
-.leaflet-tooltip.comuna-label {
-  background: rgba(255,255,255,0.9);
-  border: none;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.3);
-  font-weight: bold;
-  font-size: 14px;
-  color: #000;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
 </style>
 </head>
 
@@ -167,32 +112,6 @@ html, body {
   <label>Buscar comuna</label>
   <input id="comuna-input" placeholder="Escriba una comuna">
   <div id="dropdown"></div>
-
-  <div id="leyenda">
-    <div class="leyenda-item">
-      <div style="width:30px;height:4px;background:#c00000;opacity:0.6;border-radius:2px;"></div>
-      <div>Autopista Américo Vespucio</div>
-    </div>
-
-    <div class="leyenda-item">
-      <div class="color-box" style="background:#4CAF50;"></div>
-      <div>Zona A – $5.000</div>
-    </div>
-
-    <div class="leyenda-item">
-      <div class="color-box" style="background:#FFC107;"></div>
-      <div>Zona B – $8.000</div>
-    </div>
-
-    <div class="leyenda-item">
-      <div class="color-box" style="background:#F44336;"></div>
-      <div>Zona C – $10.000</div>
-    </div>
-
-    <div id="nota-leyenda">
-      Valores calculados según distancia estimada ida y vuelta desde Providencia.
-    </div>
-  </div>
 </div>
 
 <div id="map"></div>
@@ -206,167 +125,153 @@ html, body {
 <script>
 
 /* ===============================
-   DISTANCIAS REALES (IDA Y VUELTA)
+   CONFIGURACIÓN ORIGEN
+================================ */
+const ORIGEN = [-33.4372, -70.6506]; // Providencia
+
+let lineaActual = null;
+let camionActual = null;
+let animacionInterval = null;
+
+function limpiarAnimacion(){
+  if(lineaActual) map.removeLayer(lineaActual);
+  if(camionActual) map.removeLayer(camionActual);
+  if(animacionInterval) clearInterval(animacionInterval);
+  lineaActual=null;
+  camionActual=null;
+  animacionInterval=null;
+}
+
+function animarCamion(destino, distancia){
+
+  limpiarAnimacion();
+
+  lineaActual = L.polyline([ORIGEN, destino],{
+    color:"#000",
+    weight:3,
+    dashArray:"6,6"
+  }).addTo(map);
+
+  const truckIcon = L.divIcon({
+    html:'<i class="fa-solid fa-truck" style="color:black;font-size:18px;"></i>',
+    iconSize:[20,20],
+    className:''
+  });
+
+  camionActual = L.marker(ORIGEN,{icon:truckIcon}).addTo(map);
+
+  let progreso=0;
+  let direccion=1;
+  let pasos=200;
+  let duracion=distancia*120;
+  let intervalo=duracion/pasos;
+
+  animacionInterval=setInterval(()=>{
+
+    progreso+=direccion*(1/pasos);
+
+    if(progreso>=1) direccion=-1;
+    if(progreso<=0 && direccion===-1){
+      clearInterval(animacionInterval);
+      return;
+    }
+
+    let lat=ORIGEN[0]+(destino[0]-ORIGEN[0])*progreso;
+    let lng=ORIGEN[1]+(destino[1]-ORIGEN[1])*progreso;
+
+    camionActual.setLatLng([lat,lng]);
+
+  },intervalo);
+}
+
+/* ===============================
+   DISTANCIAS
 ================================ */
 
 const DISTANCIAS = {
-  "Providencia": 1,
-  "Ñuñoa": 6.8,
-  "Recoleta": 12.6,
-  "Macul": 13.2,
-  "Santiago": 13.4,
-  "Independencia": 13.8,
-  "Estación Central": 15.3,
-  "Peñalolén": 17.2,
-  "Las Condes": 17.2,
-  "Huechuraba": 17.4,
-  "La Reina": 18,
-  "Vitacura": 19.2,
-  "Quinta Normal": 21.6,
-  "Conchalí": 23.8,
-  "Renca": 25,
-  "La Florida": 25.4,
-  "San Miguel": 26.8,
-  "Lo Prado": 29.4,
-  "Pedro Aguirre Cerda": 29.8,
-  "San Joaquín": 31,
-  "Cerro Navia": 31.6,
-  "La Granja": 32.6,
-  "Quilicura": 34.6,
-  "Lo Espejo": 35.8,
-  "Lo Barnechea": 35.8,
-  "La Cisterna": 36.4,
-  "San Ramón": 40.1,
-  "Cerrillos": 41.8,
-  "El Bosque": 44.2,
-  "La Pintana": 44.8,
-  "Pudahuel": 45.6,
-  "Maipú": 51.8,
-  "Puente Alto": 53,
-  "San Bernardo": 53.6,
-  "Lampa": 73
+  "Providencia": 1,"Ñuñoa": 6.8,"Recoleta": 12.6,"Macul": 13.2,"Santiago": 13.4,
+  "Independencia": 13.8,"Estación Central": 15.3,"Peñalolén": 17.2,
+  "Las Condes": 17.2,"Huechuraba": 17.4,"La Reina": 18,"Vitacura": 19.2,
+  "Quinta Normal": 21.6,"Conchalí": 23.8,"Renca": 25,"La Florida": 25.4,
+  "San Miguel": 26.8,"Lo Prado": 29.4,"Pedro Aguirre Cerda": 29.8,
+  "San Joaquín": 31,"Cerro Navia": 31.6,"La Granja": 32.6,"Quilicura": 34.6,
+  "Lo Espejo": 35.8,"Lo Barnechea": 35.8,"La Cisterna": 36.4,"San Ramón": 40.1,
+  "Cerrillos": 41.8,"El Bosque": 44.2,"La Pintana": 44.8,"Pudahuel": 45.6,
+  "Maipú": 51.8,"Puente Alto": 53,"San Bernardo": 53.6,"Lampa": 73
 };
 
-/* ===============================
-   ZONAS
-================================ */
+const COMUNAS_A=["Providencia","Ñuñoa","Recoleta","Macul","Santiago","Independencia","Estación Central","Peñalolén","Las Condes","Huechuraba","La Reina","Vitacura","Quinta Normal","Conchalí"];
+const COMUNAS_B=["Renca","La Florida","San Miguel","Lo Prado","Pedro Aguirre Cerda","San Joaquín","Cerro Navia","La Granja","Quilicura","Lo Espejo","La Cisterna","San Ramón"];
+const COMUNAS_C=["Lo Barnechea","Cerrillos","El Bosque","La Pintana","Pudahuel","Maipú","Puente Alto","San Bernardo","Lampa"];
 
-const COMUNAS_A = ["Providencia","Ñuñoa","Recoleta","Macul","Santiago","Independencia","Estación Central","Peñalolén","Las Condes","Huechuraba","La Reina","Vitacura","Quinta Normal","Conchalí"];
-
-const COMUNAS_B = ["Renca","La Florida","San Miguel","Lo Prado","Pedro Aguirre Cerda","San Joaquín","Cerro Navia","La Granja","Quilicura","Lo Espejo","La Cisterna","San Ramón"];
-
-const COMUNAS_C = ["Lo Barnechea","Cerrillos","El Bosque","La Pintana","Pudahuel","Maipú","Puente Alto","San Bernardo","Lampa"];
-
-function obtenerZona(comuna){
-  if (COMUNAS_A.includes(comuna)) return "A";
-  if (COMUNAS_B.includes(comuna)) return "B";
-  if (COMUNAS_C.includes(comuna)) return "C";
-  return "-";
-}
-
-function obtenerFlete(comuna){
-  const zona = obtenerZona(comuna);
-  if (zona === "A") return 5000;
-  if (zona === "B") return 8000;
-  if (zona === "C") return 10000;
-  return 0;
-}
-
-function obtenerColor(comuna){
-  const zona = obtenerZona(comuna);
-  if (zona === "A") return "#4CAF50";
-  if (zona === "B") return "#FFC107";
-  if (zona === "C") return "#F44336";
-  return "#ccc";
-}
+function obtenerZona(c){ if(COMUNAS_A.includes(c))return"A"; if(COMUNAS_B.includes(c))return"B"; if(COMUNAS_C.includes(c))return"C"; return"-";}
+function obtenerFlete(c){const z=obtenerZona(c); if(z==="A")return 5000;if(z==="B")return 8000;if(z==="C")return 10000;return 0;}
+function obtenerColor(c){const z=obtenerZona(c); if(z==="A")return"#4CAF50";if(z==="B")return"#FFC107";if(z==="C")return"#F44336";return"#ccc";}
 
 /* ===============================
    MAPA
 ================================ */
 
-const map = L.map('map', { zoomControl:false, minZoom:10, maxZoom:13 })
+const map=L.map('map',{zoomControl:false,minZoom:10,maxZoom:13})
 .setView([-33.45,-70.66],10);
 
 L.control.zoom({position:'bottomright'}).addTo(map);
 
-map.setMaxBounds([[-34.2,-71.6],[-32.8,-69.9]]);
-
 let geojson;
-let capasPorComuna = {};
-let comunaSeleccionada = null;
-let labelActivo = null;
+let capasPorComuna={};
+let comunaSeleccionada=null;
 
-function estilo(feature){
-  const nombre = feature.properties.NOM_COM || feature.properties.COMUNA;
-  return {
-    fillColor: obtenerColor(nombre),
-    weight:0.8,
-    color:"#999",
-    fillOpacity:0.55,
-    className:"comuna"
-  };
+function estilo(f){
+  const n=f.properties.NOM_COM||f.properties.COMUNA;
+  return{fillColor:obtenerColor(n),weight:0.8,color:"#999",fillOpacity:0.55,className:"comuna"};
 }
 
 function seleccionar(layer,nombre){
 
-  if(comunaSeleccionada) comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
-  if(labelActivo) map.removeLayer(labelActivo);
+  limpiarAnimacion();
 
-  comunaSeleccionada = layer;
+  if(comunaSeleccionada) comunaSeleccionada.getElement()?.classList.remove("comuna-seleccionada");
+  comunaSeleccionada=layer;
   geojson.resetStyle();
 
-  layer.setStyle({ fillOpacity:0.9, weight:3, color:"#000" });
+  layer.setStyle({fillOpacity:0.9,weight:3,color:"#000"});
   layer.getElement()?.classList.add("comuna-seleccionada");
 
   map.fitBounds(layer.getBounds(),{maxZoom:12});
 
-  const distancia = DISTANCIAS[nombre] || 0;
-  const zona = obtenerZona(nombre);
-  const flete = obtenerFlete(nombre);
+  const distancia=DISTANCIAS[nombre]||0;
+  const zona=obtenerZona(nombre);
+  const flete=obtenerFlete(nombre);
 
-  document.getElementById("info").innerHTML = `
+  document.getElementById("info").innerHTML=`
     <strong style="font-size:16px;">${nombre}</strong><br>
     Distancia ida y vuelta: <strong>${distancia} km</strong><br>
     Zona: <strong>${zona}</strong>
     <div class="valor-flete">$${flete.toLocaleString("es-CL")}</div>
   `;
 
-  labelActivo = L.tooltip({ permanent:true, direction:"center", className:"comuna-label"})
-  .setContent(nombre)
-  .setLatLng(layer.getBounds().getCenter())
-  .addTo(map);
+  const centro=layer.getBounds().getCenter();
+  animarCamion([centro.lat,centro.lng],distancia);
 }
 
-const COMUNAS_ACTIVAS = Object.keys(DISTANCIAS);
+const COMUNAS_ACTIVAS=Object.keys(DISTANCIAS);
 
 fetch("https://services3.arcgis.com/uZrwedu11XCCdHk1/ArcGIS/rest/services/Comunas_de_la_RM/FeatureServer/1/query?where=1=1&outFields=*&f=geojson")
 .then(r=>r.json())
 .then(data=>{
-
-  geojson = L.geoJSON(data,{
-    filter:f=>COMUNAS_ACTIVAS.includes(f.properties.NOM_COM || f.properties.COMUNA || ""),
+  geojson=L.geoJSON(data,{
+    filter:f=>COMUNAS_ACTIVAS.includes(f.properties.NOM_COM||f.properties.COMUNA||""),
     style:estilo,
     onEachFeature:(f,l)=>{
-      const nombre=f.properties.NOM_COM || f.properties.COMUNA;
+      const nombre=f.properties.NOM_COM||f.properties.COMUNA;
       capasPorComuna[nombre]=l;
       l.on("click",()=>seleccionar(l,nombre));
     }
   }).addTo(map);
-
   map.fitBounds(geojson.getBounds());
-
-  fetch("./data/americo_vespucio.geojson")
-  .then(r=>r.json())
-  .then(avData=>{
-    L.geoJSON(avData,{style:{color:"#c00000",weight:4,opacity:0.6}})
-    .bindTooltip("Autopista Américo Vespucio",{sticky:true})
-    .addTo(map);
-  });
 });
 
-/* ===============================
-   BUSCADOR
-================================ */
+/* BUSCADOR */
 
 const input=document.getElementById("comuna-input");
 const dropdown=document.getElementById("dropdown");
