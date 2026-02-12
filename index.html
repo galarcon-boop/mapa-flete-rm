@@ -8,58 +8,106 @@
 
 <style>
   /* ===============================
-   CAMIÓN + CARRETERA
+   CAMIÓN + CARRETERA PRO
 ================================ */
 
 #camion-container {
   position: relative;
   width: 100%;
-  height: 50px;
+  height: 60px;
   margin-top: 14px;
   overflow: hidden;
   display: none;
 }
 
+/* CARRETERA */
+
 #carretera {
   position: absolute;
-  bottom: 8px;
+  bottom: 10px;
   width: 100%;
-  height: 6px;
+  height: 8px;
   background: #444;
   border-radius: 4px;
+  overflow: hidden;
 }
 
 #carretera::after {
   content: "";
   position: absolute;
-  top: 2px;
+  top: 3px;
   left: 0;
-  width: 100%;
+  width: 200%;
   height: 2px;
   background: repeating-linear-gradient(
     to right,
     white 0px,
-    white 12px,
-    transparent 12px,
-    transparent 24px
+    white 16px,
+    transparent 16px,
+    transparent 32px
   );
+  animation: moverCarretera 0.6s linear infinite;
 }
+
+@keyframes moverCarretera {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-32px); }
+}
+
+/* CAMIÓN */
 
 #camion {
   position: absolute;
   font-size: 28px;
-  bottom: 14px;
+  bottom: 20px;
   left: -40px;
 }
 
 .camion-moviendo {
-  animation: moverCamion 3s linear forwards;
+  animation: moverIdaVuelta 3s linear forwards,
+             vibrar 0.15s infinite;
 }
 
-@keyframes moverCamion {
-  0%   { left: -40px; }
-  100% { left: 100%; }
+@keyframes moverIdaVuelta {
+  0%   { left: -40px; transform: scaleX(1); }
+  45%  { left: 100%; transform: scaleX(1); }
+  50%  { left: 100%; transform: scaleX(-1); }
+  95%  { left: -40px; transform: scaleX(-1); }
+  100% { left: -40px; transform: scaleX(1); }
 }
+
+@keyframes vibrar {
+  0%   { translate: 0 0; }
+  25%  { translate: 0.5px -0.5px; }
+  50%  { translate: -0.5px 0.5px; }
+  75%  { translate: 0.5px 0.5px; }
+  100% { translate: 0 0; }
+}
+
+/* HUMO */
+
+.humo {
+  position: absolute;
+  bottom: 28px;
+  left: -10px;
+  width: 8px;
+  height: 8px;
+  background: rgba(180,180,180,0.6);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.camion-moviendo .humo {
+  animation: salirHumo 1s ease-out infinite;
+}
+
+@keyframes salirHumo {
+  0%   { opacity: 0.7; transform: translate(0,0) scale(0.5); }
+  50%  { opacity: 0.5; transform: translate(-10px,-10px) scale(1); }
+  100% { opacity: 0; transform: translate(-20px,-20px) scale(1.4); }
+
+}
+
 
 html, body {
   margin: 0;
@@ -258,9 +306,11 @@ html, body {
 
   <div id="camion-container">
     <div id="carretera"></div>
-    <div id="camion">🚚</div>
-  </div>
+    <div id="camion">
+  🚚
+  <div class="humo"></div>
 </div>
+
 
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
