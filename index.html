@@ -98,10 +98,17 @@
 }
 
 @keyframes moverIdaVuelta {
+
+  /* IDA → derecha (humo atrás = izquierda) */
   0%   { left: -50px; transform: scaleX(-1); }
   45%  { left: 100%; transform: scaleX(-1); }
+
+  /* CAMBIO DE DIRECCIÓN */
   50%  { left: 100%; transform: scaleX(1); }
+
+  /* VUELTA ← izquierda (humo atrás = derecha) */
   95%  { left: -50px; transform: scaleX(1); }
+
   100% { left: -50px; transform: scaleX(-1); }
 }
 
@@ -396,12 +403,31 @@ function seleccionar(layer,nombre){
   const zona = obtenerZona(nombre);
   const flete = obtenerFlete(nombre);
 
-  document.getElementById("info-content").innerHTML = `
-    <strong style="font-size:16px;">${nombre}</strong><br>
-    Distancia ida y vuelta: <strong>${distancia} km</strong><br>
-    Zona: <strong>${zona}</strong>
-    <div class="valor-flete">$${flete.toLocaleString("es-CL")}</div>
-  `;
+  const colorZona = obtenerColor(nombre);
+
+document.getElementById("info-content").innerHTML = `
+  <div style="margin-bottom:8px;">
+    <div style="font-size:13px; color:#555;">Comuna:</div>
+    <div style="font-size:18px; font-weight:bold;">${nombre}</div>
+  </div>
+
+  <div style="margin-bottom:8px;">
+    <div style="font-size:13px; color:#555;">Distancia estimada ida y vuelta:</div>
+    <div style="font-weight:bold;">${distancia} km</div>
+  </div>
+
+  <div style="margin-bottom:8px;">
+    <div style="font-size:13px; color:#555;">Zona:</div>
+    <div style="font-weight:bold;">${zona}</div>
+  </div>
+
+  <div style="margin-top:10px; padding:8px; border-radius:6px; background:${colorZona}; color:white; text-align:center;">
+    <div style="font-size:13px;">Valor flete</div>
+    <div style="font-size:22px; font-weight:bold;">
+      $${flete.toLocaleString("es-CL")}
+    </div>
+  </div>
+`;
 
   labelActivo = L.tooltip({ permanent:true, direction:"center", className:"comuna-label"})
   .setContent(nombre)
