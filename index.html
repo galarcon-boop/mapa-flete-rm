@@ -8,10 +8,23 @@
    body {
   font-family: Arial, sans-serif;
 }   
-/* ===============================
-   CAMIÓN PRO REALISTA
-================================ */
+<!-- ===============================
+     CAMIÓN ANIMADO CON HUMO
+================================ -->
 
+<div id="camion-container">
+  <div id="carretera">
+    <div id="linea-central"></div>
+  </div>
+
+  <div id="camion-wrapper">
+    <div id="camion">🚚</div>
+    <div class="humo"></div>
+  </div>
+</div>
+
+<style>
+/* CONTENEDOR */
 #camion-container {
   position: relative;
   width: 100%;
@@ -62,18 +75,17 @@
 .humo {
   position: absolute;
   bottom: 15px;
-  left: 0px;
-  width: 8px;
-  height: 8px;
-  background: rgba(100,100,100,0.6);
+  left: -10px;
+  width: 10px;
+  height: 10px;
+  background: rgba(120,120,120,0.7);
   border-radius: 50%;
   opacity: 0;
-  filter: blur(2px);
 }
 
 /* ANIMACIONES */
 .camion-moviendo #camion-wrapper {
-  animation: moverCamion 3s linear infinite;
+  animation: moverIdaVuelta 3s linear forwards;
 }
 
 .camion-moviendo #camion {
@@ -85,36 +97,58 @@
 }
 
 .camion-moviendo #linea-central {
-  animation: moverCarretera 3s linear infinite;
+  animation: carreteraIdaVuelta 3s linear forwards;
 }
 
-/* Animaciones */
+/* CAMIÓN: MOVER DE IDA Y VUELTA */
 @keyframes moverIdaVuelta {
-  0%   { left: -50px; transform: scaleX(1); }     /* inicio izquierda */
-  45%  { left: 100%; transform: scaleX(1); }     /* va hacia la derecha */
-  50%  { left: 100%; transform: scaleX(-1); }    /* voltea para volver */
-  95%  { left: -50px; transform: scaleX(-1); }   /* va hacia la izquierda */
-  100% { left: -50px; transform: scaleX(1); }    /* reinicia */
+  0%   { left: -50px; transform: scaleX(1); }
+  45%  { left: 100%; transform: scaleX(1); }   /* va a la derecha */
+  50%  { left: 100%; transform: scaleX(1); }
+  95%  { left: -50px; transform: scaleX(-1); } /* vuelve a la izquierda, ahora se voltea */
+  100% { left: -50px; transform: scaleX(1); }
 }
 
-@keyframes moverCarretera {
+/* CARRETERA */
+@keyframes carreteraIdaVuelta {
   0%   { transform: translateX(0); }
+  45%  { transform: translateX(-60px); }
   50%  { transform: translateX(-60px); }
-  50.01% { transform: translateX(0); }
-  100% { transform: translateX(-60px); }
+  95%  { transform: translateX(0); }
+  100% { transform: translateX(0); }
 }
 
+/* VIBRACIÓN DEL CAMIÓN */
 @keyframes vibrar {
   0%   { transform: translate(0,0); }
   50%  { transform: translate(0.5px,-0.5px); }
   100% { transform: translate(0,0); }
 }
 
+/* HUMO */
 @keyframes salirHumo {
   0%   { opacity: 0.7; transform: translate(0,0) scale(0.5); }
-  50%  { opacity: 0.4; transform: translate(-10px,-10px) scale(1); }
-  100% { opacity: 0; transform: translate(-20px,-20px) scale(1.4); }
+  50%  { opacity: 0.4; transform: translate(-12px,-12px) scale(1); }
+  100% { opacity: 0; transform: translate(-24px,-24px) scale(1.4); }
 }
+</style>
+
+<script>
+function activarCamion() {
+  const camionContainer = document.getElementById("camion-container");
+  const camion = document.getElementById("camion");
+
+  camionContainer.style.display = "block";
+  camion.classList.remove("camion-moviendo");
+
+  void camion.offsetWidth; // reinicia animación
+
+  camion.classList.add("camion-moviendo");
+}
+
+// Ejemplo: activar camión al seleccionar comuna
+// activarCamion();
+</script>
 
 /* ===============================
    BUSCADOR
