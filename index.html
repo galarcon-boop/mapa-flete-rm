@@ -89,11 +89,12 @@
 }
 
 /* Animaciones */
-@keyframes moverCamion {
-  0%   { left: -50px; }
-  50%  { left: 100%; }
-  50.01% { left: -50px; } /* resetea al inicio para que siga */
-  100% { left: 100%; }
+@keyframes moverIdaVuelta {
+  0%   { left: -50px; transform: scaleX(1); }     /* inicio izquierda */
+  45%  { left: 100%; transform: scaleX(1); }     /* va hacia la derecha */
+  50%  { left: 100%; transform: scaleX(-1); }    /* voltea para volver */
+  95%  { left: -50px; transform: scaleX(-1); }   /* va hacia la izquierda */
+  100% { left: -50px; transform: scaleX(1); }    /* reinicia */
 }
 
 @keyframes moverCarretera {
@@ -298,7 +299,7 @@
     </div>
 
     <div id="camion-wrapper">
-      <div id="camion">🚛</div>
+      <div id="camion">🚚</div>
       <div class="humo" style="animation-delay:0s;"></div>
 <div class="humo" style="animation-delay:0.3s;"></div>
 <div class="humo" style="animation-delay:0.6s;"></div>
