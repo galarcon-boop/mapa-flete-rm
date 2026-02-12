@@ -74,12 +74,12 @@
 }
 
 /* Posición cuando va hacia la derecha (humo atrás = izquierda) */
-.camion-moviendo #camion-wrapper[style*="scaleX(-1)"] .humo {
+.camion-moviendo #camion-wrapper[style*="scaleX(1)"] .humo {
   left: -14px;
 }
 
 /* Posición cuando va hacia la izquierda (humo atrás = derecha) */
-.camion-moviendo #camion-wrapper[style*="scaleX(1)"] .humo {
+.camion-moviendo #camion-wrapper[style*="scaleX(-1)"] .humo {
   right: -14px;
 }
 
@@ -87,6 +87,7 @@
 .humo1 { animation-delay: 0s; }
 .humo2 { animation-delay: 0.3s; }
 .humo3 { animation-delay: 0.6s; }
+.humo4 { animation-delay: 0.9s; }
 
 .camion-moviendo .humo {
   animation: humoRealista 1.2s ease-out infinite;
@@ -162,7 +163,7 @@
   border-radius: 6px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   z-index: 1000;
-  width: 240px;
+  width: 280px;
 }
 
 #search-box label {
@@ -244,7 +245,7 @@
   border-radius: 8px;
   box-shadow: 0 3px 8px rgba(0,0,0,0.2);
   z-index: 999;
-  min-width: 260px;
+  min-width: 280px;
 }
 
 .valor-flete {
