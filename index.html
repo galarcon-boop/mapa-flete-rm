@@ -252,13 +252,16 @@ html, body {
 <div id="map"></div>
 
 <div class="info" id="info">
-  Seleccione una comuna
+  <div id="info-content">
+    Seleccione una comuna
+  </div>
 
   <div id="camion-container">
     <div id="carretera"></div>
     <div id="camion">🚚</div>
   </div>
 </div>
+
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
@@ -383,7 +386,8 @@ function seleccionar(layer,nombre){
   const zona = obtenerZona(nombre);
   const flete = obtenerFlete(nombre);
 
-  document.getElementById("info").innerHTML = `
+  document.getElementById("info-content").innerHTML = `
+
     <strong style="font-size:16px;">${nombre}</strong><br>
     Distancia ida y vuelta: <strong>${distancia} km</strong><br>
     Zona: <strong>${zona}</strong>
