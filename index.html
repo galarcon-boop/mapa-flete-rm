@@ -319,17 +319,17 @@ label {
 
     <div class="leyenda-item">
       <div class="color-box" style="background:#4CAF50;"></div>
-      <div>Zona A – $5.000</div>
+      <div>Zona A – $7.000</div>
     </div>
 
     <div class="leyenda-item">
       <div class="color-box" style="background:#FFC107;"></div>
-      <div>Zona B – $8.000</div>
+      <div>Zona B – $12.000</div>
     </div>
 
     <div class="leyenda-item">
       <div class="color-box" style="background:#F44336;"></div>
-      <div>Zona C – $10.000</div>
+      <div>Zona C – $18.000</div>
     </div>
 
     <div id="nota-leyenda">
@@ -393,9 +393,9 @@ function obtenerZona(comuna){
 
 function obtenerFlete(comuna){
   const zona = obtenerZona(comuna);
-  if(zona==="A") return 5000;
-  if(zona==="B") return 8000;
-  if(zona==="C") return 10000;
+  if(zona==="A") return 7000;
+  if(zona==="B") return 12000;
+  if(zona==="C") return 18000;
   return 0;
 }
 
